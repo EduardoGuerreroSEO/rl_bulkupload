@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEO XML Generator</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS (xlsx) for reading Excel files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- JSZip for creating ZIP archives -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- FileSaver.js for downloading files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- Prism.js for XML syntax highlighting in preview -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet" />
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .file-label.dragover { background-color: #eef2ff; border-color: #4f46e5; }
+        .modal-content { max-height: 70vh; }
+        /* Style for Prism.js line numbers */
+        pre[class*="language-"].line-numbers {
+            position: relative;
+            padding-left: 3.8em;
+            counter-reset: linenumber;
+        }
+    </style>
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-5xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">SEO XML Generator</h1>
+            <p class="text-gray-600 mt-2">Convert Excel data to market-specific XML files.</p>
+        </header>
+
+        <div class="flex flex-col gap-8">
+            <!-- Top Section: Generator UI -->
+            <main class="bg-white p-6 md:p-8 rounded-xl shadow-lg">
+                <!-- Step 1: Region Selection -->
+                <div class="mb-6">
+                    <label class="block text-lg font-semibold text-gray-700 mb-3">1. Select Region</label>
+                    <div class="flex space-x-4">
+                        <label for="region-eu" class="flex items-center p-4 border rounded-lg cursor-pointer flex-1 has-[:checked]:bg-indigo-50 has-[:checked]:border-indigo-500 transition-all">
+                            <input type="radio" id="region-eu" name="region" value="EU" class="w-5 h-5 text-indigo-600 focus:ring-indigo-500" checked>
+                            <span class="ml-3 text-lg font-medium text-gray-800">EU</span>
+                        </label>
+                        <label for="region-me" class="flex items-center p-4 border rounded-lg cursor-pointer flex-1 has-[:checked]:bg-indigo-50 has-[:checked]:border-indigo-500 transition-all">
+                            <input type="radio" id="region-me" name="region" value="ME" class="w-5 h-5 text-indigo-600 focus:ring-indigo-500">
+                            <span class="ml-3 text-lg font-medium text-gray-800">ME</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Step 2: File Upload -->
+                <div class="mb-6">
+                    <label class="block text-lg font-semibold text-gray-700 mb-3">2. Upload Files</label>
+                    <label for="file-upload" id="drop-zone" class="file-label flex flex-col items-center justify-center w-full h-32 px-4 text-center border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 transition-colors">
+                        <svg class="w-8 h-8 mb-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/></svg>
+                        <p class="mb-2 text-sm text-gray-500"><span class="font-semibold">Click to upload</span> or drag and drop</p>
+                    </label>
+                    <input id="file-upload" type="file" class="hidden" multiple accept=".xlsx, .xls">
+                </div>
+
+                <!-- File List & Clear Button -->
+                <div id="file-list-container" class="space-y-2 mb-6 hidden">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-lg font-semibold text-gray-700">File Queue</h3>
+                         <button id="clear-btn" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Clear All</button>
+                    </div>
+                    <div id="file-list" class="space-y-2"></div>
+                </div>
+
+                <!-- Step 3: Generate & Download -->
+                <div>
+                     <button id="generate-btn" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center">
+                        <svg id="spinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span id="generate-btn-text">Generate & Download ZIP</span>
+                    </button>
+                </div>
+
+                <!-- Status Messages -->
+                <div id="status" class="mt-6 text-center text-sm"></div>
+            </main>
+
+            <!-- Bottom Section: Information -->
+            <aside class="bg-white p-6 md:p-8 rounded-xl shadow-lg space-y-6">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Required CSV Headers</h3>
+                    <p class="text-sm text-gray-600">Make sure your Excel files contain these exact column headers:</p>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <code class="px-2 py-1 bg-gray-200 text-gray-800 rounded-md text-sm font-mono">cgid</code>
+                        <code class="px-2 py-1 bg-gray-200 text-gray-800 rounded-md text-sm font-mono">title</code>
+                        <code class="px-2 py-1 bg-gray-200 text-gray-800 rounded-md text-sm font-mono">desc</code>
+                        <code class="px-2 py-1 bg-gray-200 text-gray-800 rounded-md text-sm font-mono">h1</code>
+                    </div>
+                </div>
+                 <div class="border-t border-gray-200"></div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-3">How it works</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <h4 class="font-bold text-md text-indigo-700">EU Region</h4>
+                            <ul class="list-disc list-inside text-sm text-gray-600 mt-2 space-y-1">
+                                <li>Supports multiple languages (EN, NL, FR, ES, PT, DE, IT)</li>
+                                <li>Handles currency conversions (€, £, CHF, $)</li>
+                                <li>Generates market-specific content for European countries</li>
+                                <li>Creates catalog ID: <code class="text-xs">siteCatalog_RalphLauren_EU</code></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-md text-indigo-700">ME Region</h4>
+                            <ul class="list-disc list-inside text-sm text-gray-600 mt-2 space-y-1">
+                                <li>Supports English and Arabic languages</li>
+                                <li>Covers Middle East markets (BH, JO, KW, LB, OM, QA, SA, AE)</li>
+                                <li>Handles brand name localization</li>
+                                <li>Creates catalog ID: <code class="text-xs">siteCatalog_RalphLauren_ME</code></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+    
+    <!-- XML Preview Modal -->
+    <div id="preview-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h3 class="text-xl font-bold">XML Preview</h3>
+                <button id="modal-close-btn" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button>
+            </div>
+            <div class="p-4 modal-content overflow-y-auto">
+                 <pre class="line-numbers"><code id="modal-content-code" class="language-xml"></code></pre>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+
+    <script>
+        // --- DATA AND CONFIGURATION ---
+        const EU_MARKET_INFO = {'EN':[{'Code':'UK','Lang':'en-GB','Currency':'£'},{'Code':'CH','Lang':'en-CH','Currency':'£'},{'Code':'IE','Lang':'en-IE','Currency':'€'},{'Code':'NL','Lang':'en-NL','Currency':'€'},{'Code':'BE','Lang':'en-BE','Currency':'€'},{'Code':'PT','Lang':'en-PT','Currency':'€'},{'Code':'AD','Lang':'en-AD','Currency':'€'},{'Code':'AL','Lang':'en-AL','Currency':'£'},{'Code':'AT','Lang':'en-AT','Currency':'€'},{'Code':'BA','Lang':'en-BA','Currency':'£'},{'Code':'BG','Lang':'en-BG','Currency':'€'},{'Code':'CY','Lang':'en-CY','Currency':'€'},{'Code':'CZ','Lang':'en-CZ','Currency':'€'},{'Code':'DK','Lang':'en-DK','Currency':'£'},{'Code':'EE','Lang':'en-EE','Currency':'€'},{'Code':'FI','Lang':'en-FI','Currency':'€'},{'Code':'GR','Lang':'en-GR','Currency':'€'},{'Code':'HR','Lang':'en-HR','Currency':'€'},{'Code':'HU','Lang':'en-HU','Currency':'€'},{'Code':'IS','Lang':'en-IS','Currency':'£'},{'Code':'LI','Lang':'en-LI','Currency':'£'},{'Code':'LT','Lang':'en-LT','Currency':'€'},{'Code':'LU','Lang':'en-LU','Currency':'€'},{'Code':'LV','Lang':'en-LV','Currency':'€'},{'Code':'MD','Lang':'en-MD','Currency':'€'},{'Code':'ME','Lang':'en-ME','Currency':'€'},{'Code':'MT','Lang':'en-MT','Currency':'€'},{'Code':'PL','Lang':'en-PL','Currency':'£'},{'Code':'RO','Lang':'en-RO','Currency':'€'},{'Code':'SE','Lang':'en-SE','Currency':'€'},{'Code':'SI','Lang':'en-SI','Currency':'€'},{'Code':'SK','Lang':'en-SK','Currency':'£'},{'Code':'AM','Lang':'en-AM','Currency':'£'},{'Code':'AZ','Lang':'en-AZ','Currency':'£'},{'Code':'CV','Lang':'en-CV','Currency':'£'},{'Code':'DZ','Lang':'en-DZ','Currency':'£'},{'Code':'ET','Lang':'en-ET','Currency':'£'},{'Code':'GI','Lang':'en-GI','Currency':'£'},{'Code':'IL','Lang':'en-IL','Currency':'£'},{'Code':'IN','Lang':'en-IN','Currency':'£'},{'Code':'KG','Lang':'en-KG','Currency':'£'},{'Code':'NG','Lang':'en-NG','Currency':'£'},{'Code':'NO','Lang':'en-NO','Currency':'£'},{'Code':'PK','Lang':'en-PK','Currency':'£'},{'Code':'TM','Lang':'en-TM','Currency':'£'},{'Code':'TN','Lang':'en-TN','Currency':'£'},{'Code':'TR','Lang':'en-TR','Currency':'£'},{'Code':'AR','Lang':'en-AR','Currency':'£'},{'Code':'BO','Lang':'en-BO','Currency':'£'},{'Code':'BR','Lang':'en-BR','Currency':'£'},{'Code':'CL','Lang':'en-CL','Currency':'£'},{'Code':'CO','Lang':'en-CO','Currency':'£'},{'Code':'EC','Lang':'en-EC','Currency':'$'},{'Code':'GP','Lang':'en-GP','Currency':'€'},{'Code':'GY','Lang':'en-GY','Currency':'£'},{'Code':'PA','Lang':'en-PA','Currency':'$'},{'Code':'PY','Lang':'en-PY','Currency':'£'},{'Code':'PE','Lang':'en-PE','Currency':'£'},{'Code':'UY','Lang':'en-UY','Currency':'£'},{'Code':'GE','Lang':'en-GE','Currency':'£'},{'Code':'GF','Lang':'en-GF','Currency':'€'},{'Code':'MA','Lang':'en-MA','Currency':'£'},{'Code':'UZ','Lang':'en-UZ','Currency':'£'},{'Code':'ES','Lang':'en-ES','Currency':'€'},{'Code':'FR','Lang':'en-FR','Currency':'€'},{'Code':'IT','Lang':'en-IT','Currency':'€'},{'Code':'DE','Lang':'en-DE','Currency':'€'}],'NL':[{'Code':'BE','Lang':'nl-BE','Currency':'€'},{'Code':'NL','Lang':'nl-NL','Currency':'€'}],'FR':[{'Code':'BE','Lang':'fr-BE','Currency':'€'},{'Code':'CH','Lang':'fr-CH','Currency':'€'},{'Code':'FR','Lang':'fr-FR','Currency':'€'},{'Code':'LU','Lang':'fr-LU','Currency':'€'}],'ES':[{'Code':'ES','Lang':'es-ES','Currency':'€'}],'PT':[{'Code':'PT','Lang':'pt-PT','Currency':'€'}],'DE':[{'Code':'AT','Lang':'de-AT','Currency':'€'},{'Code':'CH','Lang':'de-CH','Currency':'CHF'},{'Code':'DE','Lang':'de-DE','Currency':'€'},{'Code':'EE','Lang':'de-EE','Currency':'€'},{'Code':'LV','Lang':'de-LV','Currency':'€'},{'Code':'SK','Lang':'de-SK','Currency':'€'}],'IT':[{'Code':'IT','Lang':'it-IT','Currency':'€'}]};
+        const ME_MARKET_INFO = {'EN':{'BH':'Ralph Lauren® BH','JO':'Ralph Lauren® JO','KW':'Ralph Lauren® KW','LB':'Ralph Lauren® LB','OM':'Ralph Lauren® OM','QA':'Ralph Lauren® QA','SA':'Ralph Lauren® SA','AE':'Ralph Lauren® UAE'},'AR':{'BH':'رالف لورين® ب.ح','JO':'رالف لورين® أ.ر','KW':'رالف لورين® ك.ت','LB':'رالف لورين® ل.ن','OM':'رالف لورين ع.ن','QA':'رالف لورين® ق.ر','SA':'رالف لورين® س.ع','AE':'رالف لورين® إ.ت'}};
+        const XML_NAMESPACE = "http://www.demandware.com/xml/impex/catalog/2006-10-31";
+        const REQUIRED_HEADERS = ['cgid', 'title', 'desc', 'h1'];
+
+        // --- GLOBAL STATE ---
+        let fileStore = []; // To hold file objects and their status
+
+        // --- UI ELEMENT REFERENCES ---
+        const fileInput = document.getElementById('file-upload');
+        const fileListContainer = document.getElementById('file-list-container');
+        const fileListDisplay = document.getElementById('file-list');
+        const generateBtn = document.getElementById('generate-btn');
+        const statusDiv = document.getElementById('status');
+        const spinner = document.getElementById('spinner');
+        const generateBtnText = document.getElementById('generate-btn-text');
+        const dropZone = document.getElementById('drop-zone');
+        const clearBtn = document.getElementById('clear-btn');
+        const modal = document.getElementById('preview-modal');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+        const modalContentCode = document.getElementById('modal-content-code');
+        
+        // --- EVENT LISTENERS ---
+        fileInput.addEventListener('change', (e) => addFilesToQueue(e.target.files));
+        clearBtn.addEventListener('click', clearFiles);
+        generateBtn.addEventListener('click', handleGeneration);
+        modalCloseBtn.addEventListener('click', () => modal.classList.add('hidden'));
+        
+        // Drag and Drop Listeners
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            addFilesToQueue(e.dataTransfer.files);
+        });
+        
+        // Event delegation for preview buttons
+        fileListDisplay.addEventListener('click', (e) => {
+            if (e.target.closest('.preview-btn')) {
+                const fileId = e.target.closest('.file-item').dataset.id;
+                handlePreview(fileId);
+            }
+        });
+
+        // --- CORE LOGIC ---
+        
+        async function handleGeneration() {
+            if (fileStore.length === 0) {
+                showStatus('Please upload at least one Excel file.', 'error');
+                return;
+            }
+
+            toggleLoading(true, 'Processing files...');
+            const selectedRegion = document.querySelector('input[name="region"]:checked').value;
+            const zip = new JSZip();
+            let successCount = 0;
+
+            for (const item of fileStore) {
+                try {
+                    const xmlContent = await processSingleFile(item, selectedRegion);
+                    item.status = 'success';
+                    item.message = '';
+                    successCount++;
+                    const lang = item.file.name.split('.')[0].toUpperCase();
+                    const fileName = `000000000000000000000000000000_SEO_${selectedRegion}_${lang}_${getFormattedDate()}.xml`;
+                    zip.file(fileName, xmlContent);
+                } catch (error) {
+                    item.status = 'error';
+                    item.message = error.message;
+                }
+            }
+            
+            updateFileListUI();
+            
+            if (successCount > 0) {
+                 const zipBlob = await zip.generateAsync({ type: 'blob' });
+                 saveAs(zipBlob, `xml_files_${selectedRegion}_${getFormattedDate()}.zip`);
+                 showStatus(`Successfully processed ${successCount} of ${fileStore.length} files.`, 'success');
+            } else {
+                 showStatus('No files were processed successfully. Check errors above.', 'error');
+            }
+            toggleLoading(false);
+        }
+
+        async function processSingleFile(item, region) {
+            const jsonData = await readFileAsJson(item.file);
+            const validation = validateCsvHeaders(jsonData);
+            if (!validation.isValid) {
+                throw new Error(`Missing headers: ${validation.missing.join(', ')}`);
+            }
+            
+            const lang = item.file.name.split('.')[0].toUpperCase();
+            const generateFn = region === 'EU' ? generateEuXml : generateMeXml;
+            const xmlContent = generateFn(jsonData, lang);
+
+            if (xmlContent) {
+                return xmlContent;
+            } else {
+                throw new Error(`Language '${lang}' not configured for ${region} or file is empty.`);
+            }
+        }
+
+        async function handlePreview(fileId) {
+            const item = fileStore.find(f => f.id === fileId);
+            if(!item) return;
+
+            toggleLoading(true, 'Generating Preview...');
+            
+            try {
+                const selectedRegion = document.querySelector('input[name="region"]:checked').value;
+                const fileData = await readFileAsJson(item.file);
+                const validation = validateCsvHeaders(fileData);
+                if (!validation.isValid) {
+                    throw new Error(`Invalid headers. Missing: ${validation.missing.join(', ')}`);
+                }
+
+                const generateFn = selectedRegion === 'EU' ? generateEuXml : generateMeXml;
+                const xmlContent = generateFn(fileData, item.file.name.split('.')[0].toUpperCase(), true);
+
+                if (!xmlContent) { throw new Error("No XML could be generated. Check file."); }
+
+                modalContentCode.textContent = xmlContent;
+                modal.classList.remove('hidden');
+                Prism.highlightAll();
+
+            } catch(error) {
+                showStatus(error.message, 'error');
+            } finally {
+                toggleLoading(false);
+            }
+        }
+
+        // --- UI & STATE MANAGEMENT ---
+        function addFilesToQueue(files) {
+            const newFiles = Array.from(files);
+            newFiles.forEach(file => {
+                // Prevent duplicates
+                if (!fileStore.some(item => item.file.name === file.name && item.file.size === file.size)) {
+                    fileStore.push({
+                        id: `file-${Date.now()}-${file.name}`, // more unique ID
+                        file: file,
+                        status: 'pending',
+                        message: ''
+                    });
+                }
+            });
+            updateFileListUI();
+        }
+
+        function updateFileListUI() {
+            fileListContainer.classList.toggle('hidden', fileStore.length === 0);
+            fileListDisplay.innerHTML = ''; 
+
+            fileStore.forEach(item => {
+                const fileItem = document.createElement('div');
+                fileItem.dataset.id = item.id;
+                fileItem.className = 'file-item flex items-center justify-between bg-gray-100 p-2 rounded-lg';
+                
+                const statusIcons = {
+                    success: `<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+                    error: `<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+                    pending: `<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>`
+                };
+
+                fileItem.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        ${statusIcons[item.status]}
+                        <span class="text-sm font-medium text-gray-700 truncate">${item.file.name}</span>
+                    </div>
+                     <button class="preview-btn text-xs bg-white border border-gray-300 px-2 py-1 rounded-md hover:bg-gray-50">Preview</button>
+                `;
+                fileListDisplay.appendChild(fileItem);
+                
+                 if(item.status === 'error' && item.message) {
+                    const errorMsg = document.createElement('p');
+                    errorMsg.className = 'text-xs text-red-600 ml-8 -mt-1';
+                    errorMsg.textContent = item.message;
+                    fileListDisplay.appendChild(errorMsg);
+                 }
+            });
+        }
+        
+        function clearFiles() {
+            fileStore = [];
+            fileInput.value = '';
+            updateFileListUI();
+            showStatus('');
+        }
+
+        // --- XML GENERATION ---
+
+        function generateEuXml(data, lang, preview = false) {
+            const markets = EU_MARKET_INFO[lang];
+            if (!markets) return '';
+            
+            let xmlBody = '';
+            const placeholder_codes = ["UK", "DE", "ES", "FR", "IT", "NL", "PT"];
+            const currency_placeholder = "£";
+            const dataToProcess = preview ? data.slice(0, 1) : data;
+
+            dataToProcess.forEach(row => {
+                const cgid = row.cgid ? String(row.cgid).trim() : '';
+                if (!cgid) return;
+                const title = row.title ? String(row.title).trim() : '';
+                const desc = row.desc ? String(row.desc).trim() : '';
+                const h1 = row.h1 ? String(row.h1).trim() : '';
+
+                markets.forEach(market => {
+                    const { Code, Lang, Currency } = market;
+                    let marketTitle = title, marketDesc = desc, marketH1 = h1;
+                    placeholder_codes.forEach(p_code => {
+                       marketTitle = marketTitle.replace(new RegExp(p_code, 'g'), Code);
+                       marketDesc = marketDesc.replace(new RegExp(p_code, 'g'), Code);
+                       marketH1 = marketH1.replace(new RegExp(p_code, 'g'), Code);
+                    });
+                    marketTitle = marketTitle.replace(new RegExp(currency_placeholder, 'g'), Currency);
+                    marketDesc = marketDesc.replace(new RegExp(currency_placeholder, 'g'), Currency);
+                    marketH1 = marketH1.replace(new RegExp(currency_placeholder, 'g'), Currency);
+                    xmlBody += createCategoryEntry(cgid, Lang, marketTitle, marketDesc, marketH1);
+                });
+            });
+
+            if (!xmlBody) return '';
+            return `<?xml version="1.0" encoding="UTF-8"?>\n<catalog xmlns="${XML_NAMESPACE}" catalog-id="siteCatalog_RalphLauren_EU">\n${xmlBody}\n</catalog>`;
+        }
+        
+        function generateMeXml(data, lang, preview = false) {
+            const markets = ME_MARKET_INFO[lang];
+            if (!markets) return '';
+
+            let xmlBody = '';
+            const placeholder = lang === 'EN' ? "Ralph Lauren® SA" : "رالف لورين® س.ع";
+            const dataToProcess = preview ? data.slice(0, 1) : data;
+
+            dataToProcess.forEach(row => {
+                const cgid = row.cgid ? String(row.cgid).trim() : '';
+                 if (!cgid) return;
+                const title = row.title ? String(row.title).trim() : '';
+                const desc = row.desc ? String(row.desc).trim() : '';
+                const h1 = row.h1 ? String(row.h1).trim() : '';
+
+                Object.entries(markets).forEach(([code, replacementText]) => {
+                    const langCountryCode = `${lang.toLowerCase()}-${code.toUpperCase()}`;
+                    const marketTitle = title.replace(new RegExp(placeholder, 'g'), replacementText);
+                    const marketDesc = desc.replace(new RegExp(placeholder, 'g'), replacementText);
+                    const marketH1 = h1.replace(new RegExp(placeholder, 'g'), replacementText);
+                    xmlBody += createCategoryEntry(cgid, langCountryCode, marketTitle, marketDesc, marketH1);
+                });
+            });
+            
+            if (!xmlBody) return '';
+            return `<?xml version="1.0" encoding="UTF-8"?>\n<catalog xmlns="${XML_NAMESPACE}" catalog-id="siteCatalog_RalphLauren_ME">\n${xmlBody}\n</catalog>`;
+        }
+
+        function createCategoryEntry(cgid, langCode, title, desc, h1) {
+            return `    <category category-id="${escapeXml(cgid)}">
+        <page-attributes>
+            <page-title xml:lang="${escapeXml(langCode)}">${escapeXml(title)}</page-title>
+            <page-description xml:lang="${escapeXml(langCode)}">${escapeXml(desc)}</page-description>
+        </page-attributes>
+        <custom-attributes>
+            <custom-attribute xml:lang="${escapeXml(langCode)}" attribute-id="alternateH1Tag">${escapeXml(h1)}</custom-attribute>
+        </custom-attributes>
+    </category>`;
+        }
+
+        // --- UTILITY FUNCTIONS ---
+        const escapeXml = (unsafe) => {
+            if (typeof unsafe !== 'string') return '';
+            return unsafe.replace(/[<>&'"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','\'':'&apos;','"':'&quot;'}[c]));
+        };
+        
+        function readFileAsJson(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        resolve(XLSX.utils.sheet_to_json(worksheet));
+                    } catch(err) {
+                        reject(new Error("Failed to parse the Excel file."));
+                    }
+                };
+                reader.onerror = () => reject(new Error("Failed to read the file."));
+                reader.readAsArrayBuffer(file);
+            });
+        }
+        
+        function validateCsvHeaders(jsonData) {
+            if (!jsonData || jsonData.length === 0) {
+                return { isValid: true, missing: [] }; // Empty file is not a header error
+            }
+            const headers = Object.keys(jsonData[0]);
+            const missing = REQUIRED_HEADERS.filter(h => !headers.includes(h));
+            return { isValid: missing.length === 0, missing: missing };
+        }
+        
+        function showStatus(message, type = 'info') {
+            statusDiv.textContent = message;
+            statusDiv.className = 'mt-6 text-center text-sm'; // Reset classes
+            if (type === 'success') statusDiv.classList.add('text-green-600');
+            else if (type === 'error') statusDiv.classList.add('text-red-600');
+            else statusDiv.classList.add('text-gray-600');
+        }
+        
+        function toggleLoading(isLoading, message) {
+             generateBtn.disabled = isLoading;
+             generateBtnText.textContent = isLoading ? message : 'Generate & Download ZIP';
+             spinner.classList.toggle('hidden', !isLoading);
+        }
+        
+        function getFormattedDate() {
+            const d = new Date();
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            return `${day}_${month}_${year}`;
+        }
+    </script>
+</body>
+</html>
