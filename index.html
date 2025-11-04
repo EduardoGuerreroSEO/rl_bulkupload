@@ -512,23 +512,31 @@
     }
 
     /* ---------- XML RENDER ---------- */
+    // IMPORTANT: always output tags, even if empty strings
     function createAggregatedCategory(cgid, entries, mode){
       const lines=[];
       lines.push(`    <category category-id="${escapeXml(cgid)}">`);
       lines.push('        <page-attributes>');
       entries.forEach(e=>{
-        if(e.title) lines.push(`            <page-title xml:lang="${escapeXml(e.langCode)}">${escapeXml(e.title)}</page-title>`);
-        if(e.desc)  lines.push(`            <page-description xml:lang="${escapeXml(e.langCode)}">${escapeXml(e.desc)}</page-description>`);
+        const t = e.title ?? '';
+        const d = e.desc  ?? '';
+        lines.push(`            <page-title xml:lang="${escapeXml(e.langCode)}">${escapeXml(t)}</page-title>`);
+        lines.push(`            <page-description xml:lang="${escapeXml(e.langCode)}">${escapeXml(d)}</page-description>`);
       });
       lines.push('        </page-attributes>');
       lines.push('        <custom-attributes>');
       entries.forEach(e=>{
+        const h  = e.h1 ?? '';
+        // Facets fields are written when mode === 'facets' (even if empty)
         if(mode==='facets'){
-          if(e.ref_title) lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="refinedPageTitle">${escapeXml(e.ref_title)}</custom-attribute>`);
-          if(e.ref_desc)  lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="refinedPageDescription">${escapeXml(e.ref_desc)}</custom-attribute>`);
-          if(e.ref_h1)    lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="refinedPageH1Tag">${escapeXml(e.ref_h1)}</custom-attribute>`);
+          const rt = e.ref_title ?? '';
+          const rd = e.ref_desc  ?? '';
+          const rh = e.ref_h1    ?? '';
+          lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="refinedPageTitle">${escapeXml(rt)}</custom-attribute>`);
+          lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="refinedPageDescription">${escapeXml(rd)}</custom-attribute>`);
+          lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="refinedPageH1Tag">${escapeXml(rh)}</custom-attribute>`);
         }
-        if(e.h1) lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="alternateH1Tag">${escapeXml(e.h1)}</custom-attribute>`);
+        lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="alternateH1Tag">${escapeXml(h)}</custom-attribute>`);
       });
       lines.push('        </custom-attributes>');
       lines.push('    </category>');
@@ -693,5 +701,3 @@
   </script>
 </body>
 </html>
-
-
