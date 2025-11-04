@@ -307,7 +307,10 @@
     });
 
     /* ---------- HELPERS ---------- */
-    const escapeXml = s => typeof s==='string' ? s.replace(/[<>&'"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','\'':'&apos;','"':'&quot;'}[c])) : '';
+    // Cleanse illegal XML 1.0 control characters, then escape XML entities (incl. &)
+    const cleanseXml = s => (typeof s === 'string' ? s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '') : '');
+    const escapeXml = s => cleanseXml(String(s)).replace(/[<>&'"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','\'':'&apos;','"':'&quot;'}[c]));
+
     const escapeReg = s => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
     const replaceCodesSafely = (text,codesMap)=>{
       if(!text) return '';
@@ -360,15 +363,30 @@
         row.dataset.id=item.id;
         row.className='file-item flex items-center justify-between bg-gray-50 border rounded-xl p-2';
         const iconClass = item.status==='success' ? 'text-green-600' : item.status==='error' ? 'text-red-600' : 'text-gray-400';
-        row.innerHTML=`
-          <div class="flex items-center gap-3">
-            <svg class="w-5 h-5 ${iconClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m-4-4h8"/>
-            </svg>
-            <span class="text-sm font-medium truncate">${item.file.name}</span>
-          </div>
-          <button class="preview-btn text-xs bg-white border px-2 py-1 rounded-md hover:bg-gray-100">Preview</button>`;
+
+        const left = document.createElement('div');
+        left.className = 'flex items-center gap-3';
+
+        const icon = document.createElement('svg');
+        icon.setAttribute('class', `w-5 h-5 ${iconClass}`);
+        icon.setAttribute('fill','none');
+        icon.setAttribute('stroke','currentColor');
+        icon.setAttribute('viewBox','0 0 24 24');
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m-4-4h8"/>';
+        left.appendChild(icon);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'text-sm font-medium truncate';
+        nameSpan.textContent = item.file.name;
+        left.appendChild(nameSpan);
+
+        const btn = document.createElement('button');
+        btn.className = 'preview-btn text-xs bg-white border px-2 py-1 rounded-md hover:bg-gray-100';
+        btn.textContent = 'Preview';
+
+        row.append(left, btn);
         fileListDisplay.appendChild(row);
+
         if(item.status==='error' && item.message){
           const p=document.createElement('p');
           p.className='text-xs text-red-600 ml-8 -mt-1';
@@ -544,7 +562,17 @@
     }
 
     /* ---------- XML RENDER ---------- */
+    // Updated to always include refined attributes; self-closing when empty; alternateH1Tag last.
     function createAggregatedCategory(cgid, entries, mode){
+      const attrLine = (lang, id, value) => {
+        const langEsc = escapeXml(lang);
+        const idEsc   = escapeXml(id);
+        if (value && String(value).length) {
+          return `            <custom-attribute xml:lang="${langEsc}" attribute-id="${idEsc}">${escapeXml(String(value))}</custom-attribute>`;
+        }
+        return `            <custom-attribute xml:lang="${langEsc}" attribute-id="${idEsc}"/>`;
+      };
+
       const lines=[];
       lines.push(`    <category category-id="${escapeXml(cgid)}">`);
       lines.push('        <page-attributes>');
@@ -558,15 +586,18 @@
       lines.push('        <custom-attributes>');
       entries.forEach(e=>{
         const h  = e.h1 ?? '';
-        if(mode==='facets'){
-          const rt = e.ref_title ?? '';
-          const rd = e.ref_desc  ?? '';
-          const rh = e.ref_h1    ?? '';
-          lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="refinedPageTitle">${escapeXml(String(rt))}</custom-attribute>`);
-          lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="refinedPageDescription">${escapeXml(String(rd))}</custom-attribute>`);
-          lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="refinedPageH1Tag">${escapeXml(String(rh))}</custom-attribute>`);
-        }
-        lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="alternateH1Tag">${escapeXml(String(h))}</custom-attribute>`);
+        const rt = e.ref_title ?? '';
+        const rd = e.ref_desc  ?? '';
+        const rh = e.ref_h1    ?? '';
+
+        // In Simple mode refined fields are emitted but empty (self-closing).
+        // In Facets mode they contain values when present.
+        lines.push(attrLine(e.langCode, 'refinedPageTitle',       mode === 'facets' ? rt : ''));
+        lines.push(attrLine(e.langCode, 'refinedPageDescription', mode === 'facets' ? rd : ''));
+        lines.push(attrLine(e.langCode, 'refinedPageH1Tag',       mode === 'facets' ? rh : ''));
+
+        // alternateH1Tag with content (may be empty -> self-closing)
+        lines.push(attrLine(e.langCode, 'alternateH1Tag', h));
       });
       lines.push('        </custom-attributes>');
       lines.push('    </category>');
@@ -606,7 +637,8 @@
 
       if(!catMap.size) return '';
       const body=Array.from(catMap.entries()).map(([cgid,entries])=>createAggregatedCategory(cgid,entries,mode)).join('\n');
-      return `<?xml version="1.0" encoding="UTF-8"?>\n<catalog xmlns="${XML_NAMESPACE}" catalog-id="siteCatalog_RalphLauren_EU">\n${body}\n</catalog>`;
+      // Updated header: single quotes + utf-8
+      return `<?xml version='1.0' encoding='utf-8'?>\n<catalog xmlns="${XML_NAMESPACE}" catalog-id="siteCatalog_RalphLauren_EU">\n${body}\n</catalog>`;
     }
 
     function generateMeXml(rows, langKey, mode, selectedMap, preview=false){
@@ -630,9 +662,10 @@
           const langCode=`${langKey.toLowerCase()}-${code}`;
           const applyBrand = (txt)=>{
             if(!txt) return '';
-            return txt.includes(ME_PLACEHOLDER)
-              ? txt.replaceAll(ME_PLACEHOLDER,brand)
-              : txt.replaceAll(ME_LEGACY_TOKEN[langKey] || '', brand);
+            const legacy = ME_LEGACY_TOKEN[langKey];
+            if (txt.includes(ME_PLACEHOLDER)) return txt.replaceAll(ME_PLACEHOLDER,brand);
+            if (legacy && txt.includes(legacy)) return txt.replaceAll(legacy, brand);
+            return txt;
           };
           const entry={
             langCode,
@@ -650,7 +683,8 @@
 
       if(!catMap.size) return '';
       const body=Array.from(catMap.entries()).map(([cgid,entries])=>createAggregatedCategory(cgid,entries,mode)).join('\n');
-      return `<?xml version="1.0" encoding="UTF-8"?>\n<catalog xmlns="${XML_NAMESPACE}" catalog-id="siteCatalog_RalphLauren_ME">\n${body}\n</catalog>`;
+      // Updated header: single quotes + utf-8
+      return `<?xml version='1.0' encoding='utf-8'?>\n<catalog xmlns="${XML_NAMESPACE}" catalog-id="siteCatalog_RalphLauren_ME">\n${body}\n</catalog>`;
     }
 
     /* ---------- ACTIONS ---------- */
