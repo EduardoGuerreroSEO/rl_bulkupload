@@ -307,10 +307,9 @@
     });
 
     /* ---------- HELPERS ---------- */
-    // Remove illegal XML 1.0 control chars, then escape entities (incl. &)
     const cleanseXml = s => (typeof s === 'string' ? s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '') : '');
-    const escapeXml = s => cleanseXml(String(s)).replace(/[<>&'"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','\'':'&apos;','"':'&quot;'}[c]));
-    const escapeReg = s => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const escapeXml  = s => cleanseXml(String(s)).replace(/[<>&'"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','\'':'&apos;','"':'&quot;'}[c]));
+    const escapeReg  = s => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 
     const replaceCodesSafely = (text,codesMap)=>{
       if(!text) return '';
@@ -555,64 +554,48 @@
     }
 
     /* ---------- XML RENDER ---------- */
-    // Emite refined* SOLO en modo "facets"; en simple no aparecen.
-    function createAggregatedCategory(cgid, entries, mode){
-      const attrLine = (lang, id, value, forceEmit=false) => {
-        if (!forceEmit && (value === undefined || value === null || String(value).length === 0)) return null;
-        const langEsc = escapeXml(lang);
-        const idEsc   = escapeXml(id);
-        if (value && String(value).length) {
-          return `            <custom-attribute xml:lang="${langEsc}" attribute-id="${idEsc}">${escapeXml(String(value))}</custom-attribute>`;
-        }
-        // Si se fuerza emitir vacío (no lo usamos aquí), sería self-closing:
-        return `            <custom-attribute xml:lang="${langEsc}" attribute-id="${idEsc}"/>`;
-      };
-
+    // Emits one <category> PER MARKET, even if category-id repeats.
+    // In "simple" mode: DO NOT include refined* attributes at all.
+    function createAggregatedCategory(cgid, entry, mode){
       const lines=[];
       lines.push(`    <category category-id="${escapeXml(cgid)}">`);
       lines.push('        <page-attributes>');
-      entries.forEach(e=>{
-        lines.push(`            <page-title xml:lang="${escapeXml(e.langCode)}">${escapeXml(String(e.title ?? ''))}</page-title>`);
-        lines.push(`            <page-description xml:lang="${escapeXml(e.langCode)}">${escapeXml(String(e.desc  ?? ''))}</page-description>`);
-      });
+      lines.push(`            <page-title xml:lang="${escapeXml(entry.langCode)}">${escapeXml(String(entry.title ?? ''))}</page-title>`);
+      lines.push(`            <page-description xml:lang="${escapeXml(entry.langCode)}">${escapeXml(String(entry.desc  ?? ''))}</page-description>`);
       lines.push('        </page-attributes>');
       lines.push('        <custom-attributes>');
-      entries.forEach(e=>{
-        const out = [];
 
-        if (mode === 'facets') {
-          const rt = e.ref_title ?? '';
-          const rd = e.ref_desc  ?? '';
-          const rh = e.ref_h1    ?? '';
-          const l1 = attrLine(e.langCode, 'refinedPageTitle',       rt);
-          const l2 = attrLine(e.langCode, 'refinedPageDescription', rd);
-          const l3 = attrLine(e.langCode, 'refinedPageH1Tag',       rh);
-          if (l1) out.push(l1);
-          if (l2) out.push(l2);
-          if (l3) out.push(l3);
-        }
+      if (mode === 'facets') {
+        const rt = entry.ref_title ?? '';
+        const rd = entry.ref_desc  ?? '';
+        const rh = entry.ref_h1    ?? '';
+        // Only output refined* if there is a value (no self-closing needed per your spec in facets examples)
+        if (rt) lines.push(`            <custom-attribute xml:lang="${escapeXml(entry.langCode)}" attribute-id="refinedPageTitle">${escapeXml(rt)}</custom-attribute>`);
+        if (rd) lines.push(`            <custom-attribute xml:lang="${escapeXml(entry.langCode)}" attribute-id="refinedPageDescription">${escapeXml(rd)}</custom-attribute>`);
+        if (rh) lines.push(`            <custom-attribute xml:lang="${escapeXml(entry.langCode)}" attribute-id="refinedPageH1Tag">${escapeXml(rh)}</custom-attribute>`);
+      }
 
-        // Siempre emitimos alternateH1Tag (si hay valor); en tu ejemplo tiene contenido
-        const h = e.h1 ?? '';
-        const l4 = attrLine(e.langCode, 'alternateH1Tag', h);
-        if (l4) out.push(l4);
+      const h  = entry.h1 ?? '';
+      if (h) {
+        lines.push(`            <custom-attribute xml:lang="${escapeXml(entry.langCode)}" attribute-id="alternateH1Tag">${escapeXml(h)}</custom-attribute>`);
+      } else {
+        // If there's no H1, omit the tag (your example always had a value)
+      }
 
-        lines.push(...out);
-      });
       lines.push('        </custom-attributes>');
       lines.push('    </category>');
       return lines.join('\n');
     }
 
-    // EU: colapsa a 1 entrada por xml:lang (si hay varios markets del mismo idioma)
     function generateEuXml(rows, langKey, mode, selectedList, preview=false){
       if(!EU_MARKETS?.[langKey]) return '';
-      const data = preview ? rows.slice(0,1) : rows;
+      const data    = preview ? rows.slice(0,1) : rows;
       const markets = (selectedList && selectedList.length ? selectedList : EU_MARKETS[langKey]) || [];
 
-      const catMap=new Map();
+      const categories = [];
+
       data.forEach(r=>{
-        const cgid= r.cgid!==undefined ? String(r.cgid).trim() : '';
+        const cgid  = r.cgid!==undefined ? String(r.cgid).trim() : '';
         if(!cgid) return;
 
         const title = r.title!==undefined ? String(r.title).trim() : '';
@@ -622,14 +605,7 @@
         const rd    = r.ref_desc!==undefined  ? String(r.ref_desc).trim()  : '';
         const rh    = r.ref_h1!==undefined    ? String(r.ref_h1).trim()    : '';
 
-        // Para evitar duplicados por idioma, recordamos qué lang ya usamos para este cgid
-        const usedLangs = (catMap.get(cgid)?.__usedLangs) || new Set();
-
-        for (const m of markets) {
-          const langCode = m.Lang;                    // p.ej., "it-IT"
-          if (usedLangs.has(langCode)) continue;      // ya emitido ese idioma
-
-          // Reemplazos de placeholders por market (solo el PRIMER market por idioma)
+        markets.forEach(m=>{
           const codesMap={}; EU_PLACEHOLDER_CODES.forEach(p=>codesMap[p]=m.Code);
           const T = replaceCurrency(replaceCodesSafely(title,codesMap),EU_CURRENCY_PLACEHOLDER,m.Currency);
           const D = replaceCurrency(replaceCodesSafely(desc,codesMap), EU_CURRENCY_PLACEHOLDER,m.Currency);
@@ -638,38 +614,24 @@
           const RD= replaceCurrency(replaceCodesSafely(rd,codesMap),   EU_CURRENCY_PLACEHOLDER,m.Currency);
           const RH= replaceCurrency(replaceCodesSafely(rh,codesMap),   EU_CURRENCY_PLACEHOLDER,m.Currency);
 
-          const entry={ langCode, title:T, desc:D, h1:H, ref_title:RT, ref_desc:RD, ref_h1:RH };
-
-          if(!catMap.has(cgid)) {
-            catMap.set(cgid, []);
-            catMap.get(cgid).__usedLangs = new Set();
-          }
-          catMap.get(cgid).push(entry);
-          catMap.get(cgid).__usedLangs.add(langCode);
-
-          // Solo el primer market por langCode
-          break;
-        }
+          const entry={ langCode:m.Lang, title:T, desc:D, h1:H, ref_title:RT, ref_desc:RD, ref_h1:RH };
+          categories.push(createAggregatedCategory(cgid, entry, mode));
+        });
       });
 
-      // Render
-      const body = Array.from(catMap.entries()).map(([cgid,entries])=>{
-        // quitamos el marcador interno __usedLangs
-        const filtered = entries.filter(e => typeof e === 'object' && e.langCode);
-        return createAggregatedCategory(cgid, filtered, mode);
-      }).join('\n');
-
-      if(!body) return '';
+      if(!categories.length) return '';
+      const body = categories.join('\n');
       return `<?xml version='1.0' encoding='utf-8'?>\n<catalog xmlns="${XML_NAMESPACE}" catalog-id="siteCatalog_RalphLauren_EU">\n${body}\n</catalog>`;
     }
 
     function generateMeXml(rows, langKey, mode, selectedMap, preview=false){
       if(!ME_MARKETS?.[langKey]) return '';
       const data = preview ? rows.slice(0,1) : rows;
-      const all = ME_MARKETS[langKey];
+      const all  = ME_MARKETS[langKey];
       const markets = selectedMap && Object.keys(selectedMap).length ? selectedMap : all;
 
-      const catMap=new Map();
+      const categories = [];
+
       data.forEach(r=>{
         const cgid = r.cgid!==undefined ? String(r.cgid).trim() : '';
         if(!cgid) return;
@@ -681,12 +643,8 @@
         const rd    = r.ref_desc!==undefined  ? String(r.ref_desc).trim()  : '';
         const rh    = r.ref_h1!==undefined    ? String(r.ref_h1).trim()    : '';
 
-        const usedLangs = (catMap.get(cgid)?.__usedLangs) || new Set();
-
         Object.entries(markets).forEach(([code, brand])=>{
           const langCode=`${langKey.toLowerCase()}-${code}`;
-          if (usedLangs.has(langCode)) return;
-
           const applyBrand = (txt)=>{
             if(!txt) return '';
             const legacy = ME_LEGACY_TOKEN[langKey];
@@ -697,29 +655,20 @@
 
           const entry={
             langCode,
-            title:applyBrand(title),
-            desc:applyBrand(desc),
-            h1:applyBrand(h1),
+            title: applyBrand(title),
+            desc:  applyBrand(desc),
+            h1:    applyBrand(h1),
             ref_title: mode==='facets' ? applyBrand(rt) : '',
             ref_desc:  mode==='facets' ? applyBrand(rd) : '',
             ref_h1:    mode==='facets' ? applyBrand(rh) : ''
           };
 
-          if(!catMap.has(cgid)) {
-            catMap.set(cgid, []);
-            catMap.get(cgid).__usedLangs = new Set();
-          }
-          catMap.get(cgid).push(entry);
-          catMap.get(cgid).__usedLangs.add(langCode);
+          categories.push(createAggregatedCategory(cgid, entry, mode));
         });
       });
 
-      const body = Array.from(catMap.entries()).map(([cgid,entries])=>{
-        const filtered = entries.filter(e => typeof e === 'object' && e.langCode);
-        return createAggregatedCategory(cgid, filtered, mode);
-      }).join('\n');
-
-      if(!body) return '';
+      if(!categories.length) return '';
+      const body = categories.join('\n');
       return `<?xml version='1.0' encoding='utf-8'?>\n<catalog xmlns="${XML_NAMESPACE}" catalog-id="siteCatalog_RalphLauren_ME">\n${body}\n</catalog>`;
     }
 
