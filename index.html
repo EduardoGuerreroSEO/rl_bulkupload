@@ -35,24 +35,12 @@
     body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
     .file-label.dragover { background: rgba(29,47,78,.06); border-color: #1D2F4E; }
     .modal-content { max-height: 70vh; }
-
-    /* Background after login: subtle image overlay @ 20% on white base */
-    body.bg-after-login {
-      background: #ffffff; /* base white */
-      position: relative;
-      overflow-x: hidden;
-    }
+    body.bg-after-login { background: #fff; position: relative; overflow-x: hidden; }
     body.bg-after-login::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      z-index: -1;
+      content: ""; position: fixed; inset: 0; z-index: -1;
       background-image: url('./background.avif');
-      background-size: cover;
-      background-position: center center;
-      background-repeat: no-repeat;
-      opacity: 0.2; /* ~20% */
-      pointer-events: none;
+      background-size: cover; background-position: center; background-repeat: no-repeat;
+      opacity: 0.2; pointer-events: none;
     }
   </style>
 
@@ -62,7 +50,7 @@
 </head>
 <body class="bg-white text-gray-900">
 
-  <!-- LOGIN (client side; obfuscated with SHA-256 + Base64) -->
+  <!-- LOGIN -->
   <div id="login-overlay" class="fixed inset-0 bg-rl-navy/95 flex items-center justify-center z-50">
     <div class="bg-white rounded-2xl shadow-soft w-full max-w-md p-8 border border-rl-gold/40">
       <h1 class="text-2xl font-bold text-rl-navy">SEO XML Generator</h1>
@@ -204,7 +192,6 @@
 
   <script>
     /* ---------- LOGIN (hash + base64) ---------- */
-    // SHA-256 (hex) of:  rl_salt_v1|eduardo:guerrero
     const B64_HASH = 'NmVhYzBmMmY1NDQ1YjhlYmJmYzI2OTNlMmEwODc0MjQzOWQ2Nzc5MTJmNDc4M2E2ODI1NGUyNTcyYzEwNmRmOA==';
     const SALT = 'rl_salt_v1|';
 
@@ -217,7 +204,7 @@
 
     if (localStorage.getItem('rl_xml_auth') === 'ok') {
       loginOverlay.classList.add('hidden');
-      document.body.classList.add('bg-after-login'); // subtle background
+      document.body.classList.add('bg-after-login');
     }
 
     async function sha256Hex(str){
@@ -230,13 +217,13 @@
 
     loginForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
-      const targetHex = b64decodeToText(B64_HASH); // expected hash (hex)
+      const targetHex = b64decodeToText(B64_HASH);
       const inputHex  = await sha256Hex(`${SALT}${loginUser.value}:${loginPass.value}`);
       if (targetHex && inputHex === targetHex) {
         loginErr.classList.add('hidden');
         if (rememberMe.checked) localStorage.setItem('rl_xml_auth', 'ok');
         loginOverlay.classList.add('hidden');
-        document.body.classList.add('bg-after-login'); // add subtle background after login
+        document.body.classList.add('bg-after-login');
       } else {
         loginErr.classList.remove('hidden');
       }
@@ -247,7 +234,6 @@
     const REQUIRED_HEADERS=['cgid','title','desc','h1'];
     const OPTIONAL_HEADERS=['ref_title','ref_desc','ref_h1'];
 
-    // EU placeholders (including PL and SE)
     const EU_PLACEHOLDER_CODES = ['UK','DE','ES','FR','IT','NL','PT','PL','SE'];
     const EU_CURRENCY_PLACEHOLDER = '£';
     const ME_PLACEHOLDER = '{{MARKET_BRAND}}';
@@ -273,12 +259,9 @@
     const marketBox=document.getElementById('market-checkboxes');
     const downloadTemplateBtn=document.getElementById('download-template');
 
-    /* ---------- LOAD JSON (no fallback) ---------- */
+    /* ---------- LOAD JSON ---------- */
     async function loadMarketJsons(){
-      const fail = (msg) => {
-        showStatus(msg, 'error');
-        generateBtn.disabled = true;
-      };
+      const fail = (msg) => { showStatus(msg, 'error'); generateBtn.disabled = true; };
       try{
         const [euRes, meRes] = await Promise.all([ fetch('markets_eu.json'), fetch('markets_me.json') ]);
         if (!euRes.ok) return fail('Failed to load markets_eu.json. Make sure it is placed next to this HTML.');
@@ -286,14 +269,8 @@
         const [eu, me] = await Promise.all([ euRes.json(), meRes.json() ]);
         if (!eu || typeof eu !== 'object') return fail('Invalid markets_eu.json format.');
         if (!me || typeof me !== 'object') return fail('Invalid markets_me.json format.');
-        EU_MARKETS = eu;
-        ME_MARKETS = me;
-        generateBtn.disabled = false;
-        populateMarketPicker();
-      }catch(e){
-        fail('Unable to load market JSON files. Check console and file paths.');
-        console.error(e);
-      }
+        EU_MARKETS = eu; ME_MARKETS = me; generateBtn.disabled = false; populateMarketPicker();
+      }catch(e){ fail('Unable to load market JSON files. Check console and file paths.'); console.error(e); }
     }
     loadMarketJsons();
 
@@ -308,7 +285,7 @@
     dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('dragover');addFilesToQueue(e.dataTransfer.files);});
     document.addEventListener('change',e=>{
       if(e.target.name==='region') populateMarketPicker();
-      if(e.target.name==='mode')   populateMarketPicker(); // keep UI reactive
+      if(e.target.name==='mode')   populateMarketPicker();
     });
     fileListDisplay.addEventListener('click',e=>{
       if(e.target.closest('.preview-btn')){
@@ -317,7 +294,7 @@
       }
     });
 
-    // Excel template (.xlsx)
+    // Template .xlsx
     downloadTemplateBtn.addEventListener('click', ()=>{
       const wb = XLSX.utils.book_new();
       const data = [
@@ -365,12 +342,10 @@
       Array.from(files).forEach(file=>{
         const nameLower = file.name.toLowerCase();
         const isExcel = nameLower.endsWith('.xlsx') || nameLower.endsWith('.xls');
-        // Reject non-Excel files
         if(!isExcel){
           fileStore.push({ id:`file-${Date.now()}-${file.name}`, file, status:'error', message:'Only Excel files (.xlsx/.xls) are supported.' });
           return;
         }
-        // Prevent duplicates
         if(!fileStore.some(i=>i.file.name===file.name && i.file.size===file.size)){
           fileStore.push({ id:`file-${Date.now()}-${file.name}`, file, status:'pending', message:'' });
         }
@@ -384,9 +359,7 @@
         const row=document.createElement('div');
         row.dataset.id=item.id;
         row.className='file-item flex items-center justify-between bg-gray-50 border rounded-xl p-2';
-        const iconClass = item.status==='success' ? 'text-green-600'
-                         : item.status==='error' ? 'text-red-600'
-                         : 'text-gray-400';
+        const iconClass = item.status==='success' ? 'text-green-600' : item.status==='error' ? 'text-red-600' : 'text-gray-400';
         row.innerHTML=`
           <div class="flex items-center gap-3">
             <svg class="w-5 h-5 ${iconClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -482,7 +455,7 @@
       }
     }
 
-    // GLOBAL handler for All / None (works across re-renders)
+    // All / None
     marketBox.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-act]');
       if (!btn) return;
@@ -511,8 +484,14 @@
       return out;
     }
 
-    /* ---------- XLSX ---------- */
-    function readFileAsJson(file){
+    /* ---------- XLSX: robust read & normalise ---------- */
+    function normaliseHeader(h){
+      if (!h && h !== 0) return '';
+      return String(h).trim().toLowerCase().replace(/\s+/g,'_');
+    }
+
+    // Read workbook, keep empty cells, and normalise keys to canonical names
+    function readFileAsNormalisedRows(file){
       return new Promise((resolve,reject)=>{
         const reader=new FileReader();
         reader.onload=e=>{
@@ -520,22 +499,51 @@
             const data=new Uint8Array(e.target.result);
             const wb=XLSX.read(data,{type:'array'});
             const ws=wb.Sheets[wb.SheetNames[0]];
-            resolve(XLSX.utils.sheet_to_json(ws));
+
+            // 1) Read header row exactly as is
+            const headerRows = XLSX.utils.sheet_to_json(ws, { header:1, blankrows:false });
+            const headerRaw = (headerRows && headerRows[0]) ? headerRows[0] : [];
+            const headerMap = {}; // canonical -> original
+            headerRaw.forEach(orig=>{
+              const canon = normaliseHeader(orig);
+              if (canon) headerMap[canon] = String(orig);
+            });
+
+            // 2) Validate required headers case-insensitively
+            const missing = REQUIRED_HEADERS.filter(h => !(h in headerMap));
+            if (missing.length) {
+              reject(new Error(`Missing Excel headers: ${missing.join(', ')}`));
+              return;
+            }
+
+            // 3) Read objects keeping empty cells
+            const rowsObj = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+            // 4) Normalise keys (canonical)
+            const normalised = rowsObj.map(row => {
+              const out = {};
+              // required + optional
+              [...REQUIRED_HEADERS, ...OPTIONAL_HEADERS].forEach(canon => {
+                const orig = headerMap[canon];
+                out[canon] = orig in row ? row[orig] : "";
+              });
+              // Keep any extra columns (lowercased keys) just in case
+              Object.keys(row).forEach(k=>{
+                const canonExtra = normaliseHeader(k);
+                if (!(canonExtra in out)) out[canonExtra] = row[k];
+              });
+              return out;
+            });
+
+            resolve(normalised);
           }catch(err){ reject(new Error('Failed to parse the Excel file.')); }
         };
         reader.onerror=()=>reject(new Error('Failed to read the file.'));
         reader.readAsArrayBuffer(file);
       });
     }
-    function validateHeaders(rows){
-      if(!rows || rows.length===0) return {isValid:true,missing:[]};
-      const headers=Object.keys(rows[0]);
-      const missing=REQUIRED_HEADERS.filter(h=>!headers.includes(h));
-      return {isValid:missing.length===0, missing};
-    }
 
     /* ---------- XML RENDER ---------- */
-    // IMPORTANT: always output tags, even if empty strings
     function createAggregatedCategory(cgid, entries, mode){
       const lines=[];
       lines.push(`    <category category-id="${escapeXml(cgid)}">`);
@@ -543,8 +551,8 @@
       entries.forEach(e=>{
         const t = e.title ?? '';
         const d = e.desc  ?? '';
-        lines.push(`            <page-title xml:lang="${escapeXml(e.langCode)}">${escapeXml(t)}</page-title>`);
-        lines.push(`            <page-description xml:lang="${escapeXml(e.langCode)}">${escapeXml(d)}</page-description>`);
+        lines.push(`            <page-title xml:lang="${escapeXml(e.langCode)}">${escapeXml(String(t))}</page-title>`);
+        lines.push(`            <page-description xml:lang="${escapeXml(e.langCode)}">${escapeXml(String(d))}</page-description>`);
       });
       lines.push('        </page-attributes>');
       lines.push('        <custom-attributes>');
@@ -554,11 +562,11 @@
           const rt = e.ref_title ?? '';
           const rd = e.ref_desc  ?? '';
           const rh = e.ref_h1    ?? '';
-          lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="refinedPageTitle">${escapeXml(rt)}</custom-attribute>`);
-          lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="refinedPageDescription">${escapeXml(rd)}</custom-attribute>`);
-          lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="refinedPageH1Tag">${escapeXml(rh)}</custom-attribute>`);
+          lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="refinedPageTitle">${escapeXml(String(rt))}</custom-attribute>`);
+          lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="refinedPageDescription">${escapeXml(String(rd))}</custom-attribute>`);
+          lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="refinedPageH1Tag">${escapeXml(String(rh))}</custom-attribute>`);
         }
-        lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="alternateH1Tag">${escapeXml(h)}</custom-attribute>`);
+        lines.push(`            <custom-attribute xml:lang="${escapeXml(e.langCode)}" attribute-id="alternateH1Tag">${escapeXml(String(h))}</custom-attribute>`);
       });
       lines.push('        </custom-attributes>');
       lines.push('    </category>');
@@ -572,23 +580,23 @@
 
       const catMap=new Map();
       data.forEach(r=>{
-        const cgid=r.cgid?String(r.cgid).trim():'';
+        const cgid= r.cgid!==undefined ? String(r.cgid).trim() : '';
         if(!cgid) return;
-        const title=r.title?String(r.title).trim():'';
-        const desc=r.desc?String(r.desc).trim():'';
-        const h1=r.h1?String(r.h1).trim():'';
-        const rt=r.ref_title?String(r.ref_title).trim():'';
-        const rd=r.ref_desc?String(r.ref_desc).trim():'';
-        const rh=r.ref_h1?String(r.ref_h1).trim():'';
+        const title = r.title!==undefined ? String(r.title).trim() : '';
+        const desc  = r.desc!==undefined  ? String(r.desc).trim()  : '';
+        const h1    = r.h1!==undefined    ? String(r.h1).trim()    : '';
+        const rt    = r.ref_title!==undefined ? String(r.ref_title).trim() : '';
+        const rd    = r.ref_desc!==undefined  ? String(r.ref_desc).trim()  : '';
+        const rh    = r.ref_h1!==undefined    ? String(r.ref_h1).trim()    : '';
 
         markets.forEach(m=>{
           const codesMap={}; EU_PLACEHOLDER_CODES.forEach(p=>codesMap[p]=m.Code);
-          let T=replaceCurrency(replaceCodesSafely(title,codesMap),EU_CURRENCY_PLACEHOLDER,m.Currency);
-          let D=replaceCurrency(replaceCodesSafely(desc,codesMap),EU_CURRENCY_PLACEHOLDER,m.Currency);
-          let H=replaceCurrency(replaceCodesSafely(h1,codesMap),EU_CURRENCY_PLACEHOLDER,m.Currency);
-          let RT=replaceCurrency(replaceCodesSafely(rt,codesMap),EU_CURRENCY_PLACEHOLDER,m.Currency);
-          let RD=replaceCurrency(replaceCodesSafely(rd,codesMap),EU_CURRENCY_PLACEHOLDER,m.Currency);
-          let RH=replaceCurrency(replaceCodesSafely(rh,codesMap),EU_CURRENCY_PLACEHOLDER,m.Currency);
+          const T = replaceCurrency(replaceCodesSafely(title,codesMap),EU_CURRENCY_PLACEHOLDER,m.Currency);
+          const D = replaceCurrency(replaceCodesSafely(desc,codesMap), EU_CURRENCY_PLACEHOLDER,m.Currency);
+          const H = replaceCurrency(replaceCodesSafely(h1,codesMap),   EU_CURRENCY_PLACEHOLDER,m.Currency);
+          const RT= replaceCurrency(replaceCodesSafely(rt,codesMap),   EU_CURRENCY_PLACEHOLDER,m.Currency);
+          const RD= replaceCurrency(replaceCodesSafely(rd,codesMap),   EU_CURRENCY_PLACEHOLDER,m.Currency);
+          const RH= replaceCurrency(replaceCodesSafely(rh,codesMap),   EU_CURRENCY_PLACEHOLDER,m.Currency);
 
           const entry={ langCode:m.Lang, title:T, desc:D, h1:H, ref_title:RT, ref_desc:RD, ref_h1:RH };
           if(!catMap.has(cgid)) catMap.set(cgid,[]);
@@ -609,14 +617,14 @@
 
       const catMap=new Map();
       data.forEach(r=>{
-        const cgid=r.cgid?String(r.cgid).trim():'';
+        const cgid = r.cgid!==undefined ? String(r.cgid).trim() : '';
         if(!cgid) return;
-        const title=r.title?String(r.title).trim():'';
-        const desc=r.desc?String(r.desc).trim():'';
-        const h1=r.h1?String(r.h1).trim():'';
-        const rt=r.ref_title?String(r.ref_title).trim():'';
-        const rd=r.ref_desc?String(r.ref_desc).trim():'';
-        const rh=r.ref_h1?String(r.ref_h1).trim():'';
+        const title = r.title!==undefined ? String(r.title).trim() : '';
+        const desc  = r.desc!==undefined  ? String(r.desc).trim()  : '';
+        const h1    = r.h1!==undefined    ? String(r.h1).trim()    : '';
+        const rt    = r.ref_title!==undefined ? String(r.ref_title).trim() : '';
+        const rd    = r.ref_desc!==undefined  ? String(r.ref_desc).trim()  : '';
+        const rh    = r.ref_h1!==undefined    ? String(r.ref_h1).trim()    : '';
 
         Object.entries(markets).forEach(([code, brand])=>{
           const langCode=`${langKey.toLowerCase()}-${code}`;
@@ -658,15 +666,13 @@
 
       for(const item of fileStore){
         try{
-          // Skip items already flagged as non-Excel
           const nameLower = item.file.name.toLowerCase();
           if(!(nameLower.endsWith('.xlsx') || nameLower.endsWith('.xls'))){
             item.status='error'; item.message='Only Excel files (.xlsx/.xls) are supported.';
             continue;
           }
 
-          const rows=await readFileAsJson(item.file);
-          const v=validateHeaders(rows); if(!v.isValid) throw new Error(`Missing Excel headers: ${v.missing.join(', ')}`);
+          const rows=await readFileAsNormalisedRows(item.file);
           const lang=item.file.name.split('.')[0].toUpperCase();
 
           let xml='';
@@ -707,8 +713,7 @@
           throw new Error('Preview not available: file is not Excel (.xlsx/.xls).');
         }
 
-        const rows=await readFileAsJson(item.file);
-        const v=validateHeaders(rows); if(!v.isValid) throw new Error(`Invalid Excel headers. Missing: ${v.missing.join(', ')}`);
+        const rows=await readFileAsNormalisedRows(item.file);
         const region=currentRegion();
         const mode=document.querySelector('input[name="mode"]:checked').value;
         const lang=item.file.name.split('.')[0].toUpperCase();
