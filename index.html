@@ -307,11 +307,11 @@
     });
 
     /* ---------- HELPERS ---------- */
-    // Cleanse illegal XML 1.0 control characters, then escape XML entities (incl. &)
+    // Remove illegal XML 1.0 control chars, then escape entities (incl. &)
     const cleanseXml = s => (typeof s === 'string' ? s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '') : '');
     const escapeXml = s => cleanseXml(String(s)).replace(/[<>&'"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','\'':'&apos;','"':'&quot;'}[c]));
-
     const escapeReg = s => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+
     const replaceCodesSafely = (text,codesMap)=>{
       if(!text) return '';
       let out=text;
@@ -508,7 +508,6 @@
       return String(h).trim().toLowerCase().replace(/\s+/g,'_');
     }
 
-    // Read workbook, keep empty cells, and normalise keys to canonical names
     function readFileAsNormalisedRows(file){
       return new Promise((resolve,reject)=>{
         const reader=new FileReader();
@@ -518,34 +517,28 @@
             const wb=XLSX.read(data,{type:'array'});
             const ws=wb.Sheets[wb.SheetNames[0]];
 
-            // 1) Read header row exactly as is
             const headerRows = XLSX.utils.sheet_to_json(ws, { header:1, blankrows:false });
             const headerRaw = (headerRows && headerRows[0]) ? headerRows[0] : [];
-            const headerMap = {}; // canonical -> original
+            const headerMap = {};
             headerRaw.forEach(orig=>{
               const canon = normaliseHeader(orig);
               if (canon) headerMap[canon] = String(orig);
             });
 
-            // 2) Validate required headers case-insensitively
             const missing = REQUIRED_HEADERS.filter(h => !(h in headerMap));
             if (missing.length) {
               reject(new Error(`Missing Excel headers: ${missing.join(', ')}`));
               return;
             }
 
-            // 3) Read objects keeping empty cells
             const rowsObj = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
-            // 4) Normalise keys (canonical)
             const normalised = rowsObj.map(row => {
               const out = {};
-              // required + optional
               [...REQUIRED_HEADERS, ...OPTIONAL_HEADERS].forEach(canon => {
                 const orig = headerMap[canon];
                 out[canon] = orig in row ? row[orig] : "";
               });
-              // Keep any extra columns (lowercased keys) just in case
               Object.keys(row).forEach(k=>{
                 const canonExtra = normaliseHeader(k);
                 if (!(canonExtra in out)) out[canonExtra] = row[k];
@@ -562,14 +555,16 @@
     }
 
     /* ---------- XML RENDER ---------- */
-    // Updated to always include refined attributes; self-closing when empty; alternateH1Tag last.
+    // Emite refined* SOLO en modo "facets"; en simple no aparecen.
     function createAggregatedCategory(cgid, entries, mode){
-      const attrLine = (lang, id, value) => {
+      const attrLine = (lang, id, value, forceEmit=false) => {
+        if (!forceEmit && (value === undefined || value === null || String(value).length === 0)) return null;
         const langEsc = escapeXml(lang);
         const idEsc   = escapeXml(id);
         if (value && String(value).length) {
           return `            <custom-attribute xml:lang="${langEsc}" attribute-id="${idEsc}">${escapeXml(String(value))}</custom-attribute>`;
         }
+        // Si se fuerza emitir vacío (no lo usamos aquí), sería self-closing:
         return `            <custom-attribute xml:lang="${langEsc}" attribute-id="${idEsc}"/>`;
       };
 
@@ -577,42 +572,49 @@
       lines.push(`    <category category-id="${escapeXml(cgid)}">`);
       lines.push('        <page-attributes>');
       entries.forEach(e=>{
-        const t = e.title ?? '';
-        const d = e.desc  ?? '';
-        lines.push(`            <page-title xml:lang="${escapeXml(e.langCode)}">${escapeXml(String(t))}</page-title>`);
-        lines.push(`            <page-description xml:lang="${escapeXml(e.langCode)}">${escapeXml(String(d))}</page-description>`);
+        lines.push(`            <page-title xml:lang="${escapeXml(e.langCode)}">${escapeXml(String(e.title ?? ''))}</page-title>`);
+        lines.push(`            <page-description xml:lang="${escapeXml(e.langCode)}">${escapeXml(String(e.desc  ?? ''))}</page-description>`);
       });
       lines.push('        </page-attributes>');
       lines.push('        <custom-attributes>');
       entries.forEach(e=>{
-        const h  = e.h1 ?? '';
-        const rt = e.ref_title ?? '';
-        const rd = e.ref_desc  ?? '';
-        const rh = e.ref_h1    ?? '';
+        const out = [];
 
-        // In Simple mode refined fields are emitted but empty (self-closing).
-        // In Facets mode they contain values when present.
-        lines.push(attrLine(e.langCode, 'refinedPageTitle',       mode === 'facets' ? rt : ''));
-        lines.push(attrLine(e.langCode, 'refinedPageDescription', mode === 'facets' ? rd : ''));
-        lines.push(attrLine(e.langCode, 'refinedPageH1Tag',       mode === 'facets' ? rh : ''));
+        if (mode === 'facets') {
+          const rt = e.ref_title ?? '';
+          const rd = e.ref_desc  ?? '';
+          const rh = e.ref_h1    ?? '';
+          const l1 = attrLine(e.langCode, 'refinedPageTitle',       rt);
+          const l2 = attrLine(e.langCode, 'refinedPageDescription', rd);
+          const l3 = attrLine(e.langCode, 'refinedPageH1Tag',       rh);
+          if (l1) out.push(l1);
+          if (l2) out.push(l2);
+          if (l3) out.push(l3);
+        }
 
-        // alternateH1Tag with content (may be empty -> self-closing)
-        lines.push(attrLine(e.langCode, 'alternateH1Tag', h));
+        // Siempre emitimos alternateH1Tag (si hay valor); en tu ejemplo tiene contenido
+        const h = e.h1 ?? '';
+        const l4 = attrLine(e.langCode, 'alternateH1Tag', h);
+        if (l4) out.push(l4);
+
+        lines.push(...out);
       });
       lines.push('        </custom-attributes>');
       lines.push('    </category>');
       return lines.join('\n');
     }
 
+    // EU: colapsa a 1 entrada por xml:lang (si hay varios markets del mismo idioma)
     function generateEuXml(rows, langKey, mode, selectedList, preview=false){
       if(!EU_MARKETS?.[langKey]) return '';
       const data = preview ? rows.slice(0,1) : rows;
-      const markets = selectedList && selectedList.length ? selectedList : EU_MARKETS[langKey];
+      const markets = (selectedList && selectedList.length ? selectedList : EU_MARKETS[langKey]) || [];
 
       const catMap=new Map();
       data.forEach(r=>{
         const cgid= r.cgid!==undefined ? String(r.cgid).trim() : '';
         if(!cgid) return;
+
         const title = r.title!==undefined ? String(r.title).trim() : '';
         const desc  = r.desc!==undefined  ? String(r.desc).trim()  : '';
         const h1    = r.h1!==undefined    ? String(r.h1).trim()    : '';
@@ -620,7 +622,14 @@
         const rd    = r.ref_desc!==undefined  ? String(r.ref_desc).trim()  : '';
         const rh    = r.ref_h1!==undefined    ? String(r.ref_h1).trim()    : '';
 
-        markets.forEach(m=>{
+        // Para evitar duplicados por idioma, recordamos qué lang ya usamos para este cgid
+        const usedLangs = (catMap.get(cgid)?.__usedLangs) || new Set();
+
+        for (const m of markets) {
+          const langCode = m.Lang;                    // p.ej., "it-IT"
+          if (usedLangs.has(langCode)) continue;      // ya emitido ese idioma
+
+          // Reemplazos de placeholders por market (solo el PRIMER market por idioma)
           const codesMap={}; EU_PLACEHOLDER_CODES.forEach(p=>codesMap[p]=m.Code);
           const T = replaceCurrency(replaceCodesSafely(title,codesMap),EU_CURRENCY_PLACEHOLDER,m.Currency);
           const D = replaceCurrency(replaceCodesSafely(desc,codesMap), EU_CURRENCY_PLACEHOLDER,m.Currency);
@@ -629,15 +638,28 @@
           const RD= replaceCurrency(replaceCodesSafely(rd,codesMap),   EU_CURRENCY_PLACEHOLDER,m.Currency);
           const RH= replaceCurrency(replaceCodesSafely(rh,codesMap),   EU_CURRENCY_PLACEHOLDER,m.Currency);
 
-          const entry={ langCode:m.Lang, title:T, desc:D, h1:H, ref_title:RT, ref_desc:RD, ref_h1:RH };
-          if(!catMap.has(cgid)) catMap.set(cgid,[]);
+          const entry={ langCode, title:T, desc:D, h1:H, ref_title:RT, ref_desc:RD, ref_h1:RH };
+
+          if(!catMap.has(cgid)) {
+            catMap.set(cgid, []);
+            catMap.get(cgid).__usedLangs = new Set();
+          }
           catMap.get(cgid).push(entry);
-        });
+          catMap.get(cgid).__usedLangs.add(langCode);
+
+          // Solo el primer market por langCode
+          break;
+        }
       });
 
-      if(!catMap.size) return '';
-      const body=Array.from(catMap.entries()).map(([cgid,entries])=>createAggregatedCategory(cgid,entries,mode)).join('\n');
-      // Updated header: single quotes + utf-8
+      // Render
+      const body = Array.from(catMap.entries()).map(([cgid,entries])=>{
+        // quitamos el marcador interno __usedLangs
+        const filtered = entries.filter(e => typeof e === 'object' && e.langCode);
+        return createAggregatedCategory(cgid, filtered, mode);
+      }).join('\n');
+
+      if(!body) return '';
       return `<?xml version='1.0' encoding='utf-8'?>\n<catalog xmlns="${XML_NAMESPACE}" catalog-id="siteCatalog_RalphLauren_EU">\n${body}\n</catalog>`;
     }
 
@@ -651,6 +673,7 @@
       data.forEach(r=>{
         const cgid = r.cgid!==undefined ? String(r.cgid).trim() : '';
         if(!cgid) return;
+
         const title = r.title!==undefined ? String(r.title).trim() : '';
         const desc  = r.desc!==undefined  ? String(r.desc).trim()  : '';
         const h1    = r.h1!==undefined    ? String(r.h1).trim()    : '';
@@ -658,8 +681,12 @@
         const rd    = r.ref_desc!==undefined  ? String(r.ref_desc).trim()  : '';
         const rh    = r.ref_h1!==undefined    ? String(r.ref_h1).trim()    : '';
 
+        const usedLangs = (catMap.get(cgid)?.__usedLangs) || new Set();
+
         Object.entries(markets).forEach(([code, brand])=>{
           const langCode=`${langKey.toLowerCase()}-${code}`;
+          if (usedLangs.has(langCode)) return;
+
           const applyBrand = (txt)=>{
             if(!txt) return '';
             const legacy = ME_LEGACY_TOKEN[langKey];
@@ -667,6 +694,7 @@
             if (legacy && txt.includes(legacy)) return txt.replaceAll(legacy, brand);
             return txt;
           };
+
           const entry={
             langCode,
             title:applyBrand(title),
@@ -676,14 +704,22 @@
             ref_desc:  mode==='facets' ? applyBrand(rd) : '',
             ref_h1:    mode==='facets' ? applyBrand(rh) : ''
           };
-          if(!catMap.has(cgid)) catMap.set(cgid,[]);
+
+          if(!catMap.has(cgid)) {
+            catMap.set(cgid, []);
+            catMap.get(cgid).__usedLangs = new Set();
+          }
           catMap.get(cgid).push(entry);
+          catMap.get(cgid).__usedLangs.add(langCode);
         });
       });
 
-      if(!catMap.size) return '';
-      const body=Array.from(catMap.entries()).map(([cgid,entries])=>createAggregatedCategory(cgid,entries,mode)).join('\n');
-      // Updated header: single quotes + utf-8
+      const body = Array.from(catMap.entries()).map(([cgid,entries])=>{
+        const filtered = entries.filter(e => typeof e === 'object' && e.langCode);
+        return createAggregatedCategory(cgid, filtered, mode);
+      }).join('\n');
+
+      if(!body) return '';
       return `<?xml version='1.0' encoding='utf-8'?>\n<catalog xmlns="${XML_NAMESPACE}" catalog-id="siteCatalog_RalphLauren_ME">\n${body}\n</catalog>`;
     }
 
