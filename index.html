@@ -90,7 +90,7 @@
   <div class="container mx-auto p-4 md:p-8 max-w-6xl">
     <header class="text-center mb-8">
       <h1 class="text-4xl font-extrabold text-rl-navy">SEO XML Generator</h1>
-      <p class="text-gray-600 mt-2">Convert CSV data to market-specific XML feeds for SFCC.</p>
+      <p class="text-gray-600 mt-2">Convert <strong>Excel (.xlsx)</strong> data to market-specific XML feeds for SFCC.</p>
     </header>
 
     <div class="flex flex-col gap-8">
@@ -127,12 +127,16 @@
 
         <!-- Upload -->
         <div class="mt-6">
-          <label class="block text-lg font-semibold text-rl-navy mb-3">2. Upload Files</label>
+          <label class="block text-lg font-semibold text-rl-navy mb-3">2. Upload Excel Files</label>
           <label id="drop-zone" class="file-label flex flex-col items-center justify-center w-full h-36 px-4 text-center border-2 border-dashed rounded-xl cursor-pointer bg-white">
             <svg class="w-8 h-8 mb-3 text-rl-navy" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/></svg>
-            <p class="mb-2 text-sm text-gray-600"><span class="font-semibold">Click to upload</span> or drag and drop</p>
+            <p class="mb-2 text-sm text-gray-600">
+              <span class="font-semibold">Click to upload</span> or drag and drop
+              <span class="font-semibold">Excel (.xlsx/.xls)</span>
+            </p>
           </label>
           <input id="file-upload" type="file" class="hidden" multiple accept=".xlsx,.xls"/>
+          <p class="text-xs text-gray-500 mt-2">CSV files are not supported. Please upload native Excel workbooks.</p>
         </div>
 
         <!-- File list -->
@@ -167,7 +171,7 @@
 
       <aside class="bg-white border border-rl-gold/40 p-6 md:p-8 rounded-2xl shadow-soft space-y-6">
         <div>
-          <h3 class="text-lg font-semibold text-rl-navy mb-2">Required CSV Headers</h3>
+          <h3 class="text-lg font-semibold text-rl-navy mb-2">Required Excel Headers</h3>
           <p class="text-sm text-gray-600">
             Required:
             <code class="px-2 py-0.5 bg-gray-100 rounded">cgid</code>
@@ -179,7 +183,7 @@
             <code class="px-2 py-0.5 bg-gray-100 rounded">ref_desc</code>,
             <code class="px-2 py-0.5 bg-gray-100 rounded">ref_h1</code>.
           </p>
-          <button id="download-template" class="mt-3 text-sm text-rl-navy underline">Download CSV template</button>
+          <button id="download-template" class="mt-3 text-sm text-rl-navy underline">Download Excel template (.xlsx)</button>
         </div>
       </aside>
     </div>
@@ -304,7 +308,7 @@
     dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('dragover');addFilesToQueue(e.dataTransfer.files);});
     document.addEventListener('change',e=>{
       if(e.target.name==='region') populateMarketPicker();
-      if(e.target.name==='mode')   populateMarketPicker(); // mode doesn’t filter markets, but keep UI reactive
+      if(e.target.name==='mode')   populateMarketPicker(); // keep UI reactive
     });
     fileListDisplay.addEventListener('click',e=>{
       if(e.target.closest('.preview-btn')){
@@ -312,10 +316,17 @@
         handlePreview(id);
       }
     });
-    downloadTemplateBtn.addEventListener('click',()=>{
-      const csv='cgid,title,desc,h1,ref_title,ref_desc,ref_h1\nmen-clothing-poloshirts,"Polo Shirts for Men | Ralph Lauren® UK","Shop today and get free returns.","Category H1","Refined Title","Refined Description","Refined H1"';
-      const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-      saveAs(blob,'template.csv');
+
+    // Excel template (.xlsx)
+    downloadTemplateBtn.addEventListener('click', ()=>{
+      const wb = XLSX.utils.book_new();
+      const data = [
+        ['cgid','title','desc','h1','ref_title','ref_desc','ref_h1'],
+        ['men-clothing-poloshirts','Polo Shirts for Men | Ralph Lauren® UK','Shop today and get free returns.','Category H1','Refined Title','Refined Description','Refined H1']
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      XLSX.utils.book_append_sheet(wb, ws, 'Template');
+      XLSX.writeFile(wb, 'template.xlsx');
     });
 
     /* ---------- HELPERS ---------- */
@@ -352,6 +363,14 @@
     /* ---------- FILE QUEUE ---------- */
     function addFilesToQueue(files){
       Array.from(files).forEach(file=>{
+        const nameLower = file.name.toLowerCase();
+        const isExcel = nameLower.endsWith('.xlsx') || nameLower.endsWith('.xls');
+        // Reject non-Excel files
+        if(!isExcel){
+          fileStore.push({ id:`file-${Date.now()}-${file.name}`, file, status:'error', message:'Only Excel files (.xlsx/.xls) are supported.' });
+          return;
+        }
+        // Prevent duplicates
         if(!fileStore.some(i=>i.file.name===file.name && i.file.size===file.size)){
           fileStore.push({ id:`file-${Date.now()}-${file.name}`, file, status:'pending', message:'' });
         }
@@ -365,10 +384,14 @@
         const row=document.createElement('div');
         row.dataset.id=item.id;
         row.className='file-item flex items-center justify-between bg-gray-50 border rounded-xl p-2';
-        const icon=item.status==='success'?'text-green-600': item.status==='error'?'text-red-600':'text-gray-400';
+        const iconClass = item.status==='success' ? 'text-green-600'
+                         : item.status==='error' ? 'text-red-600'
+                         : 'text-gray-400';
         row.innerHTML=`
           <div class="flex items-center gap-3">
-            <svg class="w-5 h-5 ${icon}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m-4-4h8"/></svg>
+            <svg class="w-5 h-5 ${iconClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m-4-4h8"/>
+            </svg>
             <span class="text-sm font-medium truncate">${item.file.name}</span>
           </div>
           <button class="preview-btn text-xs bg-white border px-2 py-1 rounded-md hover:bg-gray-100">Preview</button>`;
@@ -527,7 +550,6 @@
       lines.push('        <custom-attributes>');
       entries.forEach(e=>{
         const h  = e.h1 ?? '';
-        // Facets fields are written when mode === 'facets' (even if empty)
         if(mode==='facets'){
           const rt = e.ref_title ?? '';
           const rd = e.ref_desc  ?? '';
@@ -625,7 +647,7 @@
 
     /* ---------- ACTIONS ---------- */
     async function handleGeneration(){
-      if(fileStore.length===0){ showStatus('Please upload at least one Excel file.', 'error'); return; }
+      if(fileStore.length===0){ showStatus('Please upload at least one Excel file (.xlsx/.xls).', 'error'); return; }
       toggleLoading(true,'Processing files...');
       const region=currentRegion();
       const mode=document.querySelector('input[name="mode"]:checked').value;
@@ -636,8 +658,15 @@
 
       for(const item of fileStore){
         try{
+          // Skip items already flagged as non-Excel
+          const nameLower = item.file.name.toLowerCase();
+          if(!(nameLower.endsWith('.xlsx') || nameLower.endsWith('.xls'))){
+            item.status='error'; item.message='Only Excel files (.xlsx/.xls) are supported.';
+            continue;
+          }
+
           const rows=await readFileAsJson(item.file);
-          const v=validateHeaders(rows); if(!v.isValid) throw new Error(`Missing headers: ${v.missing.join(', ')}`);
+          const v=validateHeaders(rows); if(!v.isValid) throw new Error(`Missing Excel headers: ${v.missing.join(', ')}`);
           const lang=item.file.name.split('.')[0].toUpperCase();
 
           let xml='';
@@ -673,8 +702,13 @@
       const item=fileStore.find(f=>f.id===fileId); if(!item) return;
       toggleLoading(true,'Generating preview...');
       try{
+        const nameLower = item.file.name.toLowerCase();
+        if(!(nameLower.endsWith('.xlsx') || nameLower.endsWith('.xls'))){
+          throw new Error('Preview not available: file is not Excel (.xlsx/.xls).');
+        }
+
         const rows=await readFileAsJson(item.file);
-        const v=validateHeaders(rows); if(!v.isValid) throw new Error(`Invalid headers. Missing: ${v.missing.join(', ')}`);
+        const v=validateHeaders(rows); if(!v.isValid) throw new Error(`Invalid Excel headers. Missing: ${v.missing.join(', ')}`);
         const region=currentRegion();
         const mode=document.querySelector('input[name="mode"]:checked').value;
         const lang=item.file.name.split('.')[0].toUpperCase();
