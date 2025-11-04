@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SEO XML Generator</title>
+  <meta name="robots" content="noindex,nofollow">
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -61,7 +62,7 @@
 </head>
 <body class="bg-white text-gray-900">
 
-  <!-- LOGIN (client-side; obfuscated with hash + base64) -->
+  <!-- LOGIN (client side; obfuscated with SHA-256 + Base64) -->
   <div id="login-overlay" class="fixed inset-0 bg-rl-navy/95 flex items-center justify-center z-50">
     <div class="bg-white rounded-2xl shadow-soft w-full max-w-md p-8 border border-rl-gold/40">
       <h1 class="text-2xl font-bold text-rl-navy">SEO XML Generator</h1>
@@ -83,7 +84,6 @@
         </div>
         <p id="login-error" class="text-red-600 text-sm hidden">Invalid credentials.</p>
       </form>
-      <p class="text-xs text-gray-500 mt-4">Note: client-only login. For real security, add server-side auth.</p>
     </div>
   </div>
 
@@ -213,7 +213,7 @@
 
     if (localStorage.getItem('rl_xml_auth') === 'ok') {
       loginOverlay.classList.add('hidden');
-      document.body.classList.add('bg-after-login'); // apply subtle bg
+      document.body.classList.add('bg-after-login'); // subtle background
     }
 
     async function sha256Hex(str){
@@ -280,7 +280,6 @@
         if (!euRes.ok) return fail('Failed to load markets_eu.json. Make sure it is placed next to this HTML.');
         if (!meRes.ok) return fail('Failed to load markets_me.json. Make sure it is placed next to this HTML.');
         const [eu, me] = await Promise.all([ euRes.json(), meRes.json() ]);
-        // Basic sanity
         if (!eu || typeof eu !== 'object') return fail('Invalid markets_eu.json format.');
         if (!me || typeof me !== 'object') return fail('Invalid markets_me.json format.');
         EU_MARKETS = eu;
@@ -314,7 +313,7 @@
       }
     });
     downloadTemplateBtn.addEventListener('click',()=>{
-      const csv='cgid,title,desc,h1,ref_title,ref_desc,ref_h1\nCAT001,"Summer {{MARKET_BRAND}}","Find the best deals in £","Category H1","Refined Title","Refined Description","Refined H1"';
+      const csv='cgid,title,desc,h1,ref_title,ref_desc,ref_h1\nmen-clothing-poloshirts,"Polo Shirts for Men | Ralph Lauren® UK","Shop today and get free returns.","Category H1","Refined Title","Refined Description","Refined H1"';
       const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
       saveAs(blob,'template.csv');
     });
@@ -458,15 +457,17 @@
           });
         });
       }
-
-      // Bulk select per language group
-      marketBox.addEventListener('click', e=>{
-        const btn=e.target.closest('button[data-act]'); if(!btn) return;
-        const langKey=btn.dataset.langkey, act=btn.dataset.act;
-        const checks=marketBox.querySelectorAll(`.mkt-check[data-langkey="${langKey}"]`);
-        checks.forEach(c => c.checked = (act==='all'));
-      }, { once:true });
     }
+
+    // GLOBAL handler for All / None (works across re-renders)
+    marketBox.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      const langKey = btn.dataset.langkey;
+      const check = btn.dataset.act === 'all';
+      const checks = marketBox.querySelectorAll(`.mkt-check[data-langkey="${langKey}"]`);
+      checks.forEach(c => { c.checked = check; });
+    });
 
     function collectSelectionsEU(){
       const out={};
