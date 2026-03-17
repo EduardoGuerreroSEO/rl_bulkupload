@@ -213,7 +213,10 @@
       const bytes = Array.from(new Uint8Array(buf));
       return bytes.map(b => b.toString(16).padStart(2,'0')).join('');
     }
-    function b64decodeToText(b64){ try { return atob(b64); } catch { return ''; } }
+
+    function b64decodeToText(b64){
+      try { return atob(b64); } catch { return ''; }
+    }
 
     loginForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
@@ -230,71 +233,97 @@
     });
 
     /* ---------- CONSTANTS & STATE ---------- */
-    const XML_NAMESPACE="http://www.demandware.com/xml/impex/catalog/2006-10-31";
-    const REQUIRED_HEADERS=['cgid','title','desc','h1'];
-    const OPTIONAL_HEADERS=['ref_title','ref_desc','ref_h1'];
+    const XML_NAMESPACE = "http://www.demandware.com/xml/impex/catalog/2006-10-31";
+    const REQUIRED_HEADERS = ['cgid','title','desc','h1'];
+    const OPTIONAL_HEADERS = ['ref_title','ref_desc','ref_h1'];
 
     const EU_PLACEHOLDER_CODES = ['UK','DE','ES','FR','IT','NL','PT','PL','SE'];
     const EU_CURRENCY_PLACEHOLDER = '£';
     const ME_PLACEHOLDER = '{{MARKET_BRAND}}';
     const ME_LEGACY_TOKEN = { EN: 'Ralph Lauren® SA', AR: 'رالف لورين® س.ع' };
 
-    let EU_MARKETS = null; // from markets_eu.json
-    let ME_MARKETS = null; // from markets_me.json
+    let EU_MARKETS = null;
+    let ME_MARKETS = null;
     let fileStore = [];
 
     /* ---------- ELEMENTS ---------- */
-    const fileInput=document.getElementById('file-upload');
-    const dropZone=document.getElementById('drop-zone');
-    const fileListContainer=document.getElementById('file-list-container');
-    const fileListDisplay=document.getElementById('file-list');
-    const clearBtn=document.getElementById('clear-btn');
-    const generateBtn=document.getElementById('generate-btn');
-    const spinner=document.getElementById('spinner');
-    const generateBtnText=document.getElementById('generate-btn-text');
-    const statusDiv=document.getElementById('status');
-    const modal=document.getElementById('preview-modal');
-    const modalCloseBtn=document.getElementById('modal-close-btn');
-    const modalContentCode=document.getElementById('modal-content-code');
-    const marketBox=document.getElementById('market-checkboxes');
-    const downloadTemplateBtn=document.getElementById('download-template');
+    const fileInput = document.getElementById('file-upload');
+    const dropZone = document.getElementById('drop-zone');
+    const fileListContainer = document.getElementById('file-list-container');
+    const fileListDisplay = document.getElementById('file-list');
+    const clearBtn = document.getElementById('clear-btn');
+    const generateBtn = document.getElementById('generate-btn');
+    const spinner = document.getElementById('spinner');
+    const generateBtnText = document.getElementById('generate-btn-text');
+    const statusDiv = document.getElementById('status');
+    const modal = document.getElementById('preview-modal');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+    const modalContentCode = document.getElementById('modal-content-code');
+    const marketBox = document.getElementById('market-checkboxes');
+    const downloadTemplateBtn = document.getElementById('download-template');
 
     /* ---------- LOAD JSON ---------- */
     async function loadMarketJsons(){
-      const fail = (msg) => { showStatus(msg, 'error'); generateBtn.disabled = true; };
+      const fail = (msg) => {
+        showStatus(msg, 'error');
+        generateBtn.disabled = true;
+      };
+
       try{
-        const [euRes, meRes] = await Promise.all([ fetch('markets_eu.json'), fetch('markets_me.json') ]);
+        const [euRes, meRes] = await Promise.all([
+          fetch('markets_eu.json'),
+          fetch('markets_me.json')
+        ]);
+
         if (!euRes.ok) return fail('Failed to load markets_eu.json. Make sure it is placed next to this HTML.');
         if (!meRes.ok) return fail('Failed to load markets_me.json. Make sure it is placed next to this HTML.');
-        const [eu, me] = await Promise.all([ euRes.json(), meRes.json() ]);
+
+        const [eu, me] = await Promise.all([euRes.json(), meRes.json()]);
+
         if (!eu || typeof eu !== 'object') return fail('Invalid markets_eu.json format.');
         if (!me || typeof me !== 'object') return fail('Invalid markets_me.json format.');
-        EU_MARKETS = eu; ME_MARKETS = me; generateBtn.disabled = false; populateMarketPicker();
-      }catch(e){ fail('Unable to load market JSON files. Check console and file paths.'); console.error(e); }
+
+        EU_MARKETS = eu;
+        ME_MARKETS = me;
+        generateBtn.disabled = false;
+        populateMarketPicker();
+      }catch(e){
+        fail('Unable to load market JSON files. Check console and file paths.');
+        console.error(e);
+      }
     }
     loadMarketJsons();
 
     /* ---------- UI EVENTS ---------- */
-    fileInput.addEventListener('change',e=>addFilesToQueue(e.target.files));
-    clearBtn.addEventListener('click',clearFiles);
-    generateBtn.addEventListener('click',handleGeneration);
-    modalCloseBtn.addEventListener('click',()=>modal.classList.add('hidden'));
-    dropZone.addEventListener('click',()=>fileInput.click());
-    dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('dragover');});
-    dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('dragover'));
-    dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('dragover');addFilesToQueue(e.dataTransfer.files);});
-    document.addEventListener('change',e=>{
-      if(e.target.name==='region') populateMarketPicker();
-      if(e.target.name==='mode')   populateMarketPicker();
+    fileInput.addEventListener('change', e => addFilesToQueue(e.target.files));
+    clearBtn.addEventListener('click', clearFiles);
+    generateBtn.addEventListener('click', handleGeneration);
+    modalCloseBtn.addEventListener('click', () => modal.classList.add('hidden'));
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
     });
-    fileListDisplay.addEventListener('click',e=>{
-      if(e.target.closest('.preview-btn')){
-        const id=e.target.closest('.file-item').dataset.id;
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      addFilesToQueue(e.dataTransfer.files);
+    });
+
+    document.addEventListener('change', e => {
+      if (e.target.name === 'region') populateMarketPicker();
+      if (e.target.name === 'mode') populateMarketPicker();
+    });
+
+    fileListDisplay.addEventListener('click', e => {
+      if (e.target.closest('.preview-btn')) {
+        const id = e.target.closest('.file-item').dataset.id;
         handlePreview(id);
       }
     });
 
-    // Template .xlsx
     downloadTemplateBtn.addEventListener('click', ()=>{
       const wb = XLSX.utils.book_new();
       const data = [
@@ -308,60 +337,90 @@
 
     /* ---------- HELPERS ---------- */
     const cleanseXml = s => (typeof s === 'string' ? s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '') : '');
-    const escapeXml  = s => cleanseXml(String(s)).replace(/[<>&'"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','\'':'&apos;','"':'&quot;'}[c]));
-    const escapeReg  = s => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const escapeXml  = s => cleanseXml(String(s)).replace(/[<>&'"]/g, c => ({
+      '<':'&lt;',
+      '>':'&gt;',
+      '&':'&amp;',
+      '\'':'&apos;',
+      '"':'&quot;'
+    }[c]));
+    const escapeReg = s => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 
-    const replaceCodesSafely = (text,codesMap)=>{
-      if(!text) return '';
-      let out=text;
-      Object.keys(codesMap).forEach(code=>{
-        const re=new RegExp(`\\b${code}\\b`,'g');
-        out=out.replace(re,codesMap[code]);
+    const replaceCodesSafely = (text, codesMap) => {
+      if (!text) return '';
+      let out = text;
+      Object.keys(codesMap).forEach(code => {
+        const re = new RegExp(`\\b${code}\\b`, 'g');
+        out = out.replace(re, codesMap[code]);
       });
       return out;
     };
-    const replaceCurrency = (text,placeholder,to)=> text ? text.replace(new RegExp(escapeReg(placeholder),'g'), to) : '';
 
-    function showStatus(message,type='info'){
-      statusDiv.textContent=message;
-      statusDiv.className='mt-6 text-center text-sm';
-      if(type==='success') statusDiv.classList.add('text-green-700');
-      else if(type==='error') statusDiv.classList.add('text-red-600');
+    const replaceCurrency = (text, placeholder, to) => {
+      return text ? text.replace(new RegExp(escapeReg(placeholder), 'g'), to) : '';
+    };
+
+    function showStatus(message, type='info'){
+      statusDiv.textContent = message;
+      statusDiv.className = 'mt-6 text-center text-sm';
+      if(type === 'success') statusDiv.classList.add('text-green-700');
+      else if(type === 'error') statusDiv.classList.add('text-red-600');
       else statusDiv.classList.add('text-gray-600');
     }
-    function toggleLoading(isLoading,msg){
-      generateBtn.disabled=isLoading;
-      generateBtnText.textContent=isLoading?msg:'Generate & Download ZIP';
-      spinner.classList.toggle('hidden',!isLoading);
+
+    function toggleLoading(isLoading, msg){
+      generateBtn.disabled = isLoading;
+      generateBtnText.textContent = isLoading ? msg : 'Generate & Download ZIP';
+      spinner.classList.toggle('hidden', !isLoading);
     }
+
     function getFormattedDate(){
-      const d=new Date();
+      const d = new Date();
       return `${String(d.getDate()).padStart(2,'0')}_${String(d.getMonth()+1).padStart(2,'0')}_${d.getFullYear()}`;
     }
 
     /* ---------- FILE QUEUE ---------- */
     function addFilesToQueue(files){
-      Array.from(files).forEach(file=>{
+      Array.from(files).forEach(file => {
         const nameLower = file.name.toLowerCase();
         const isExcel = nameLower.endsWith('.xlsx') || nameLower.endsWith('.xls');
+
         if(!isExcel){
-          fileStore.push({ id:`file-${Date.now()}-${file.name}`, file, status:'error', message:'Only Excel files (.xlsx/.xls) are supported.' });
+          fileStore.push({
+            id:`file-${Date.now()}-${file.name}`,
+            file,
+            status:'error',
+            message:'Only Excel files (.xlsx/.xls) are supported.'
+          });
           return;
         }
-        if(!fileStore.some(i=>i.file.name===file.name && i.file.size===file.size)){
-          fileStore.push({ id:`file-${Date.now()}-${file.name}`, file, status:'pending', message:'' });
+
+        if(!fileStore.some(i => i.file.name === file.name && i.file.size === file.size)){
+          fileStore.push({
+            id:`file-${Date.now()}-${file.name}`,
+            file,
+            status:'pending',
+            message:''
+          });
         }
       });
+
       updateFileListUI();
     }
+
     function updateFileListUI(){
-      fileListContainer.classList.toggle('hidden', fileStore.length===0);
-      fileListDisplay.innerHTML='';
-      fileStore.forEach(item=>{
-        const row=document.createElement('div');
-        row.dataset.id=item.id;
-        row.className='file-item flex items-center justify-between bg-gray-50 border rounded-xl p-2';
-        const iconClass = item.status==='success' ? 'text-green-600' : item.status==='error' ? 'text-red-600' : 'text-gray-400';
+      fileListContainer.classList.toggle('hidden', fileStore.length === 0);
+      fileListDisplay.innerHTML = '';
+
+      fileStore.forEach(item => {
+        const row = document.createElement('div');
+        row.dataset.id = item.id;
+        row.className = 'file-item flex items-center justify-between bg-gray-50 border rounded-xl p-2';
+
+        const iconClass =
+          item.status === 'success' ? 'text-green-600' :
+          item.status === 'error' ? 'text-red-600' :
+          'text-gray-400';
 
         const left = document.createElement('div');
         left.className = 'flex items-center gap-3';
@@ -386,32 +445,41 @@
         row.append(left, btn);
         fileListDisplay.appendChild(row);
 
-        if(item.status==='error' && item.message){
-          const p=document.createElement('p');
-          p.className='text-xs text-red-600 ml-8 -mt-1';
-          p.textContent=item.message;
+        if(item.status === 'error' && item.message){
+          const p = document.createElement('p');
+          p.className = 'text-xs text-red-600 ml-8 -mt-1';
+          p.textContent = item.message;
           fileListDisplay.appendChild(p);
         }
       });
     }
-    function clearFiles(){ fileStore=[]; fileInput.value=''; updateFileListUI(); showStatus(''); }
+
+    function clearFiles(){
+      fileStore = [];
+      fileInput.value = '';
+      updateFileListUI();
+      showStatus('');
+    }
 
     /* ---------- REGION / ADVANCED MARKETS ---------- */
-    function currentRegion(){ return document.querySelector('input[name="region"]:checked').value; }
+    function currentRegion(){
+      return document.querySelector('input[name="region"]:checked').value;
+    }
 
     function populateMarketPicker(){
-      const region=currentRegion();
-      marketBox.innerHTML='';
+      const region = currentRegion();
+      marketBox.innerHTML = '';
 
-      if(region==='EU'){
-        if(!EU_MARKETS || Object.keys(EU_MARKETS).length===0){
-          marketBox.innerHTML='<p class="text-sm text-red-600">EU markets not loaded. Ensure markets_eu.json is available.</p>';
+      if(region === 'EU'){
+        if(!EU_MARKETS || Object.keys(EU_MARKETS).length === 0){
+          marketBox.innerHTML = '<p class="text-sm text-red-600">EU markets not loaded. Ensure markets_eu.json is available.</p>';
           return;
         }
-        Object.entries(EU_MARKETS).forEach(([langKey, markets])=>{
-          const group=document.createElement('div');
-          group.className='border rounded-lg p-3';
-          group.innerHTML=`
+
+        Object.entries(EU_MARKETS).forEach(([langKey, markets]) => {
+          const group = document.createElement('div');
+          group.className = 'border rounded-lg p-3';
+          group.innerHTML = `
             <div class="flex items-center justify-between">
               <h4 class="font-semibold text-sm text-rl-navy">${langKey}</h4>
               <div class="space-x-2">
@@ -419,33 +487,36 @@
                 <button type="button" class="text-xs underline" data-langkey="${langKey}" data-act="none">None</button>
               </div>
             </div>
-            <div class="mt-2 grid sm:grid-cols-2 lg:grid-cols-3 gap-2" id="box-${langKey}"></div>`;
+            <div class="mt-2 grid sm:grid-cols-2 lg:grid-cols-3 gap-2" id="box-${langKey}"></div>
+          `;
           marketBox.appendChild(group);
 
-          const box=group.querySelector(`#box-${langKey}`);
-          markets.forEach(m=>{
-            const el=document.createElement('label');
-            el.className='flex items-center gap-2 p-2 border rounded-lg';
-            el.innerHTML=`
+          const box = group.querySelector(`#box-${langKey}`);
+          markets.forEach(m => {
+            const el = document.createElement('label');
+            el.className = 'flex items-center gap-2 p-2 border rounded-lg';
+            el.innerHTML = `
               <input type="checkbox" class="mkt-check"
                      data-region="EU"
                      data-langkey="${langKey}"
                      data-code="${m.Code}"
                      data-lang="${m.Lang}"
                      data-cur="${m.Currency}" checked>
-              <span class="text-sm">${m.Code} <span class="text-gray-500">(${m.Lang})</span></span>`;
+              <span class="text-sm">${m.Code} <span class="text-gray-500">(${m.Lang})</span></span>
+            `;
             box.appendChild(el);
           });
         });
       } else {
-        if(!ME_MARKETS || Object.keys(ME_MARKETS).length===0){
-          marketBox.innerHTML='<p class="text-sm text-red-600">ME markets not loaded. Ensure markets_me.json is available.</p>';
+        if(!ME_MARKETS || Object.keys(ME_MARKETS).length === 0){
+          marketBox.innerHTML = '<p class="text-sm text-red-600">ME markets not loaded. Ensure markets_me.json is available.</p>';
           return;
         }
-        Object.entries(ME_MARKETS).forEach(([langKey,codesObj])=>{
-          const group=document.createElement('div');
-          group.className='border rounded-lg p-3';
-          group.innerHTML=`
+
+        Object.entries(ME_MARKETS).forEach(([langKey, codesObj]) => {
+          const group = document.createElement('div');
+          group.className = 'border rounded-lg p-3';
+          group.innerHTML = `
             <div class="flex items-center justify-between">
               <h4 class="font-semibold text-sm text-rl-navy">${langKey}</h4>
               <div class="space-x-2">
@@ -453,26 +524,27 @@
                 <button type="button" class="text-xs underline" data-langkey="${langKey}" data-act="none">None</button>
               </div>
             </div>
-            <div class="mt-2 grid sm:grid-cols-3 lg:grid-cols-4 gap-2" id="box-${langKey}"></div>`;
+            <div class="mt-2 grid sm:grid-cols-3 lg:grid-cols-4 gap-2" id="box-${langKey}"></div>
+          `;
           marketBox.appendChild(group);
 
-          const box=group.querySelector(`#box-${langKey}`);
-          Object.keys(codesObj).forEach(code=>{
-            const el=document.createElement('label');
-            el.className='flex items-center gap-2 p-2 border rounded-lg';
-            el.innerHTML=`
+          const box = group.querySelector(`#box-${langKey}`);
+          Object.keys(codesObj).forEach(code => {
+            const el = document.createElement('label');
+            el.className = 'flex items-center gap-2 p-2 border rounded-lg';
+            el.innerHTML = `
               <input type="checkbox" class="mkt-check"
                      data-region="ME"
                      data-langkey="${langKey}"
                      data-code="${code}" checked>
-              <span class="text-sm">${code}</span>`;
+              <span class="text-sm">${code}</span>
+            `;
             box.appendChild(el);
           });
         });
       }
     }
 
-    // All / None
     marketBox.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-act]');
       if (!btn) return;
@@ -483,19 +555,26 @@
     });
 
     function collectSelectionsEU(){
-      const out={};
-      document.querySelectorAll('.mkt-check[data-region="EU"]').forEach(c=>{
+      const out = {};
+      document.querySelectorAll('.mkt-check[data-region="EU"]').forEach(c => {
         if(c.checked){
-          const k=c.dataset.langkey; out[k] ||= [];
-          out[k].push({ Code:c.dataset.code, Lang:c.dataset.lang, Currency:c.dataset.cur });
+          const k = c.dataset.langkey;
+          out[k] ||= [];
+          out[k].push({
+            Code: c.dataset.code,
+            Lang: c.dataset.lang,
+            Currency: c.dataset.cur
+          });
         }
       });
       return out;
     }
+
     function collectSelectionsME(){
-      const out={};
-      document.querySelectorAll('.mkt-check[data-region="ME"]').forEach(c=>{
-        const k=c.dataset.langkey; out[k] ||= {};
+      const out = {};
+      document.querySelectorAll('.mkt-check[data-region="ME"]').forEach(c => {
+        const k = c.dataset.langkey;
+        out[k] ||= {};
         if(c.checked) out[k][c.dataset.code] = ME_MARKETS?.[k]?.[c.dataset.code];
       });
       return out;
@@ -508,18 +587,20 @@
     }
 
     function readFileAsNormalisedRows(file){
-      return new Promise((resolve,reject)=>{
-        const reader=new FileReader();
-        reader.onload=e=>{
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = e => {
           try{
-            const data=new Uint8Array(e.target.result);
-            const wb=XLSX.read(data,{type:'array'});
-            const ws=wb.Sheets[wb.SheetNames[0]];
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, {type:'array'});
+            const ws = wb.Sheets[wb.SheetNames[0]];
 
             const headerRows = XLSX.utils.sheet_to_json(ws, { header:1, blankrows:false });
             const headerRaw = (headerRows && headerRows[0]) ? headerRows[0] : [];
             const headerMap = {};
-            headerRaw.forEach(orig=>{
+
+            headerRaw.forEach(orig => {
               const canon = normaliseHeader(orig);
               if (canon) headerMap[canon] = String(orig);
             });
@@ -534,52 +615,54 @@
 
             const normalised = rowsObj.map(row => {
               const out = {};
+
               [...REQUIRED_HEADERS, ...OPTIONAL_HEADERS].forEach(canon => {
                 const orig = headerMap[canon];
                 out[canon] = orig in row ? row[orig] : "";
               });
-              Object.keys(row).forEach(k=>{
+
+              Object.keys(row).forEach(k => {
                 const canonExtra = normaliseHeader(k);
                 if (!(canonExtra in out)) out[canonExtra] = row[k];
               });
+
               return out;
             });
 
             resolve(normalised);
-          }catch(err){ reject(new Error('Failed to parse the Excel file.')); }
+          }catch(err){
+            reject(new Error('Failed to parse the Excel file.'));
+          }
         };
-        reader.onerror=()=>reject(new Error('Failed to read the file.'));
+
+        reader.onerror = () => reject(new Error('Failed to read the file.'));
         reader.readAsArrayBuffer(file);
       });
     }
 
     /* ---------- XML RENDER ---------- */
-    // Emits one <category> PER MARKET, even if category-id repeats.
-    // In "simple" mode: DO NOT include refined* attributes at all.
     function createAggregatedCategory(cgid, entry, mode){
-      const lines=[];
+      const lines = [];
       lines.push(`    <category category-id="${escapeXml(cgid)}">`);
       lines.push('        <page-attributes>');
       lines.push(`            <page-title xml:lang="${escapeXml(entry.langCode)}">${escapeXml(String(entry.title ?? ''))}</page-title>`);
-      lines.push(`            <page-description xml:lang="${escapeXml(entry.langCode)}">${escapeXml(String(entry.desc  ?? ''))}</page-description>`);
+      lines.push(`            <page-description xml:lang="${escapeXml(entry.langCode)}">${escapeXml(String(entry.desc ?? ''))}</page-description>`);
       lines.push('        </page-attributes>');
       lines.push('        <custom-attributes>');
 
       if (mode === 'facets') {
         const rt = entry.ref_title ?? '';
-        const rd = entry.ref_desc  ?? '';
-        const rh = entry.ref_h1    ?? '';
-        // Only output refined* if there is a value (no self-closing needed per your spec in facets examples)
+        const rd = entry.ref_desc ?? '';
+        const rh = entry.ref_h1 ?? '';
+
         if (rt) lines.push(`            <custom-attribute xml:lang="${escapeXml(entry.langCode)}" attribute-id="refinedPageTitle">${escapeXml(rt)}</custom-attribute>`);
         if (rd) lines.push(`            <custom-attribute xml:lang="${escapeXml(entry.langCode)}" attribute-id="refinedPageDescription">${escapeXml(rd)}</custom-attribute>`);
         if (rh) lines.push(`            <custom-attribute xml:lang="${escapeXml(entry.langCode)}" attribute-id="refinedPageH1Tag">${escapeXml(rh)}</custom-attribute>`);
       }
 
-      const h  = entry.h1 ?? '';
+      const h = entry.h1 ?? '';
       if (h) {
         lines.push(`            <custom-attribute xml:lang="${escapeXml(entry.langCode)}" attribute-id="alternateH1Tag">${escapeXml(h)}</custom-attribute>`);
-      } else {
-        // If there's no H1, omit the tag (your example always had a value)
       }
 
       lines.push('        </custom-attributes>');
@@ -587,174 +670,254 @@
       return lines.join('\n');
     }
 
-    function generateEuXml(rows, langKey, mode, selectedList, preview=false){
-      if(!EU_MARKETS?.[langKey]) return '';
-      const data    = preview ? rows.slice(0,1) : rows;
-      const markets = (selectedList && selectedList.length ? selectedList : EU_MARKETS[langKey]) || [];
+    function generateEuCategories(rows, langKey, mode, selectedList, preview=false){
+      if(!EU_MARKETS?.[langKey]) return [];
 
+      const data = preview ? rows.slice(0,1) : rows;
+      const markets = (selectedList && selectedList.length ? selectedList : EU_MARKETS[langKey]) || [];
       const categories = [];
 
-      data.forEach(r=>{
-        const cgid  = r.cgid!==undefined ? String(r.cgid).trim() : '';
+      data.forEach(r => {
+        const cgid  = r.cgid !== undefined ? String(r.cgid).trim() : '';
         if(!cgid) return;
 
-        const title = r.title!==undefined ? String(r.title).trim() : '';
-        const desc  = r.desc!==undefined  ? String(r.desc).trim()  : '';
-        const h1    = r.h1!==undefined    ? String(r.h1).trim()    : '';
-        const rt    = r.ref_title!==undefined ? String(r.ref_title).trim() : '';
-        const rd    = r.ref_desc!==undefined  ? String(r.ref_desc).trim()  : '';
-        const rh    = r.ref_h1!==undefined    ? String(r.ref_h1).trim()    : '';
+        const title = r.title !== undefined ? String(r.title).trim() : '';
+        const desc  = r.desc !== undefined ? String(r.desc).trim() : '';
+        const h1    = r.h1 !== undefined ? String(r.h1).trim() : '';
+        const rt    = r.ref_title !== undefined ? String(r.ref_title).trim() : '';
+        const rd    = r.ref_desc !== undefined ? String(r.ref_desc).trim() : '';
+        const rh    = r.ref_h1 !== undefined ? String(r.ref_h1).trim() : '';
 
-        markets.forEach(m=>{
-          const codesMap={}; EU_PLACEHOLDER_CODES.forEach(p=>codesMap[p]=m.Code);
-          const T = replaceCurrency(replaceCodesSafely(title,codesMap),EU_CURRENCY_PLACEHOLDER,m.Currency);
-          const D = replaceCurrency(replaceCodesSafely(desc,codesMap), EU_CURRENCY_PLACEHOLDER,m.Currency);
-          const H = replaceCurrency(replaceCodesSafely(h1,codesMap),   EU_CURRENCY_PLACEHOLDER,m.Currency);
-          const RT= replaceCurrency(replaceCodesSafely(rt,codesMap),   EU_CURRENCY_PLACEHOLDER,m.Currency);
-          const RD= replaceCurrency(replaceCodesSafely(rd,codesMap),   EU_CURRENCY_PLACEHOLDER,m.Currency);
-          const RH= replaceCurrency(replaceCodesSafely(rh,codesMap),   EU_CURRENCY_PLACEHOLDER,m.Currency);
+        markets.forEach(m => {
+          const codesMap = {};
+          EU_PLACEHOLDER_CODES.forEach(p => codesMap[p] = m.Code);
 
-          const entry={ langCode:m.Lang, title:T, desc:D, h1:H, ref_title:RT, ref_desc:RD, ref_h1:RH };
+          const T  = replaceCurrency(replaceCodesSafely(title, codesMap), EU_CURRENCY_PLACEHOLDER, m.Currency);
+          const D  = replaceCurrency(replaceCodesSafely(desc,  codesMap), EU_CURRENCY_PLACEHOLDER, m.Currency);
+          const H  = replaceCurrency(replaceCodesSafely(h1,    codesMap), EU_CURRENCY_PLACEHOLDER, m.Currency);
+          const RT = replaceCurrency(replaceCodesSafely(rt,    codesMap), EU_CURRENCY_PLACEHOLDER, m.Currency);
+          const RD = replaceCurrency(replaceCodesSafely(rd,    codesMap), EU_CURRENCY_PLACEHOLDER, m.Currency);
+          const RH = replaceCurrency(replaceCodesSafely(rh,    codesMap), EU_CURRENCY_PLACEHOLDER, m.Currency);
+
+          const entry = {
+            langCode: m.Lang,
+            title: T,
+            desc: D,
+            h1: H,
+            ref_title: RT,
+            ref_desc: RD,
+            ref_h1: RH
+          };
+
           categories.push(createAggregatedCategory(cgid, entry, mode));
         });
       });
 
-      if(!categories.length) return '';
-      const body = categories.join('\n');
-      return `<?xml version='1.0' encoding='utf-8'?>\n<catalog xmlns="${XML_NAMESPACE}" catalog-id="siteCatalog_RalphLauren_EU">\n${body}\n</catalog>`;
+      return categories;
     }
 
-    function generateMeXml(rows, langKey, mode, selectedMap, preview=false){
-      if(!ME_MARKETS?.[langKey]) return '';
-      const data = preview ? rows.slice(0,1) : rows;
-      const all  = ME_MARKETS[langKey];
-      const markets = selectedMap && Object.keys(selectedMap).length ? selectedMap : all;
+    function generateMeCategories(rows, langKey, mode, selectedMap, preview=false){
+      if(!ME_MARKETS?.[langKey]) return [];
 
+      const data = preview ? rows.slice(0,1) : rows;
+      const all = ME_MARKETS[langKey];
+      const markets = selectedMap && Object.keys(selectedMap).length ? selectedMap : all;
       const categories = [];
 
-      data.forEach(r=>{
-        const cgid = r.cgid!==undefined ? String(r.cgid).trim() : '';
+      data.forEach(r => {
+        const cgid = r.cgid !== undefined ? String(r.cgid).trim() : '';
         if(!cgid) return;
 
-        const title = r.title!==undefined ? String(r.title).trim() : '';
-        const desc  = r.desc!==undefined  ? String(r.desc).trim()  : '';
-        const h1    = r.h1!==undefined    ? String(r.h1).trim()    : '';
-        const rt    = r.ref_title!==undefined ? String(r.ref_title).trim() : '';
-        const rd    = r.ref_desc!==undefined  ? String(r.ref_desc).trim()  : '';
-        const rh    = r.ref_h1!==undefined    ? String(r.ref_h1).trim()    : '';
+        const title = r.title !== undefined ? String(r.title).trim() : '';
+        const desc  = r.desc !== undefined ? String(r.desc).trim() : '';
+        const h1    = r.h1 !== undefined ? String(r.h1).trim() : '';
+        const rt    = r.ref_title !== undefined ? String(r.ref_title).trim() : '';
+        const rd    = r.ref_desc !== undefined ? String(r.ref_desc).trim() : '';
+        const rh    = r.ref_h1 !== undefined ? String(r.ref_h1).trim() : '';
 
-        Object.entries(markets).forEach(([code, brand])=>{
-          const langCode=`${langKey.toLowerCase()}-${code}`;
-          const applyBrand = (txt)=>{
+        Object.entries(markets).forEach(([code, brand]) => {
+          const langCode = `${langKey.toLowerCase()}-${code}`;
+
+          const applyBrand = (txt) => {
             if(!txt) return '';
             const legacy = ME_LEGACY_TOKEN[langKey];
-            if (txt.includes(ME_PLACEHOLDER)) return txt.replaceAll(ME_PLACEHOLDER,brand);
+            if (txt.includes(ME_PLACEHOLDER)) return txt.replaceAll(ME_PLACEHOLDER, brand);
             if (legacy && txt.includes(legacy)) return txt.replaceAll(legacy, brand);
             return txt;
           };
 
-          const entry={
+          const entry = {
             langCode,
             title: applyBrand(title),
-            desc:  applyBrand(desc),
-            h1:    applyBrand(h1),
-            ref_title: mode==='facets' ? applyBrand(rt) : '',
-            ref_desc:  mode==='facets' ? applyBrand(rd) : '',
-            ref_h1:    mode==='facets' ? applyBrand(rh) : ''
+            desc: applyBrand(desc),
+            h1: applyBrand(h1),
+            ref_title: mode === 'facets' ? applyBrand(rt) : '',
+            ref_desc: mode === 'facets' ? applyBrand(rd) : '',
+            ref_h1: mode === 'facets' ? applyBrand(rh) : ''
           };
 
           categories.push(createAggregatedCategory(cgid, entry, mode));
         });
       });
 
-      if(!categories.length) return '';
-      const body = categories.join('\n');
-      return `<?xml version='1.0' encoding='utf-8'?>\n<catalog xmlns="${XML_NAMESPACE}" catalog-id="siteCatalog_RalphLauren_ME">\n${body}\n</catalog>`;
+      return categories;
+    }
+
+    function wrapCatalog(categories, catalogId){
+      if(!categories || !categories.length) return '';
+      return `<?xml version='1.0' encoding='utf-8'?>\n<catalog xmlns="${XML_NAMESPACE}" catalog-id="${catalogId}">\n${categories.join('\n')}\n</catalog>`;
+    }
+
+    function generateEuXml(rows, langKey, mode, selectedList, preview=false){
+      const categories = generateEuCategories(rows, langKey, mode, selectedList, preview);
+      return wrapCatalog(categories, 'siteCatalog_RalphLauren_EU');
+    }
+
+    function generateMeXml(rows, langKey, mode, selectedMap, preview=false){
+      const categories = generateMeCategories(rows, langKey, mode, selectedMap, preview);
+      return wrapCatalog(categories, 'siteCatalog_RalphLauren_ME');
     }
 
     /* ---------- ACTIONS ---------- */
     async function handleGeneration(){
-      if(fileStore.length===0){ showStatus('Please upload at least one Excel file (.xlsx/.xls).', 'error'); return; }
-      toggleLoading(true,'Processing files...');
-      const region=currentRegion();
-      const mode=document.querySelector('input[name="mode"]:checked').value;
-      const zip=new JSZip(); let success=0;
+      if(fileStore.length === 0){
+        showStatus('Please upload at least one Excel file (.xlsx/.xls).', 'error');
+        return;
+      }
 
-      const selectedEU = region==='EU' ? collectSelectionsEU() : null;
-      const selectedME = region==='ME' ? collectSelectionsME() : null;
+      toggleLoading(true, 'Processing files...');
+
+      const region = currentRegion();
+      const mode = document.querySelector('input[name="mode"]:checked').value;
+      const zip = new JSZip();
+      let success = 0;
+
+      const combinedCategories = [];
+
+      const selectedEU = region === 'EU' ? collectSelectionsEU() : null;
+      const selectedME = region === 'ME' ? collectSelectionsME() : null;
 
       for(const item of fileStore){
         try{
           const nameLower = item.file.name.toLowerCase();
+
           if(!(nameLower.endsWith('.xlsx') || nameLower.endsWith('.xls'))){
-            item.status='error'; item.message='Only Excel files (.xlsx/.xls) are supported.';
+            item.status = 'error';
+            item.message = 'Only Excel files (.xlsx/.xls) are supported.';
             continue;
           }
 
-          const rows=await readFileAsNormalisedRows(item.file);
-          const lang=item.file.name.split('.')[0].toUpperCase();
+          const rows = await readFileAsNormalisedRows(item.file);
+          const lang = item.file.name.split('.')[0].toUpperCase();
 
-          let xml='';
-          if(region==='EU'){
-            const picks=(selectedEU && selectedEU[lang] && selectedEU[lang].length) ? selectedEU[lang] : EU_MARKETS?.[lang];
-            xml=generateEuXml(rows, lang, mode, picks);
-          }else{
-            const picks=(selectedME && selectedME[lang] && Object.keys(selectedME[lang]).length) ? selectedME[lang] : ME_MARKETS?.[lang];
-            xml=generateMeXml(rows, lang, mode, picks);
+          let xml = '';
+
+          if(region === 'EU'){
+            const picks = (selectedEU && selectedEU[lang] && selectedEU[lang].length)
+              ? selectedEU[lang]
+              : EU_MARKETS?.[lang];
+
+            xml = generateEuXml(rows, lang, mode, picks);
+
+            const cats = generateEuCategories(rows, lang, mode, picks);
+            combinedCategories.push(...cats);
+          } else {
+            const picks = (selectedME && selectedME[lang] && Object.keys(selectedME[lang]).length)
+              ? selectedME[lang]
+              : ME_MARKETS?.[lang];
+
+            xml = generateMeXml(rows, lang, mode, picks);
+
+            const cats = generateMeCategories(rows, lang, mode, picks);
+            combinedCategories.push(...cats);
           }
+
           if(!xml) throw new Error(`Language '${lang}' not configured for ${region}.`);
 
-          item.status='success'; item.message=''; success++;
-          const fname=`000000000000000000000000000000_SEO_${region}_${lang}_${getFormattedDate()}.xml`;
+          item.status = 'success';
+          item.message = '';
+          success++;
+
+          const fname = `000000000000000000000000000000_SEO_${region}_${lang}_${getFormattedDate()}.xml`;
           zip.file(fname, xml);
+
         }catch(err){
-          item.status='error'; item.message=err.message;
+          item.status = 'error';
+          item.message = err.message;
         }
       }
 
-      updateFileListUI();
-      if(success>0){
-        const blob=await zip.generateAsync({type:'blob'});
-        saveAs(blob, `xml_files_${region}_${getFormattedDate()}.zip`);
-        showStatus(`Successfully processed ${success} of ${fileStore.length} file(s).`,'success');
-      }else{
-        showStatus('No files were processed successfully. Check errors above.','error');
+      if (combinedCategories.length > 0) {
+        const combinedCatalogId = region === 'EU'
+          ? 'siteCatalog_RalphLauren_EU'
+          : 'siteCatalog_RalphLauren_ME';
+
+        const combinedXml = wrapCatalog(combinedCategories, combinedCatalogId);
+
+        zip.file(
+          `000000000000000000000000000000_SEO_${region}_COMBINED_${getFormattedDate()}.xml`,
+          combinedXml
+        );
       }
+
+      updateFileListUI();
+
+      if(success > 0){
+        const blob = await zip.generateAsync({type:'blob'});
+        saveAs(blob, `xml_files_${region}_${getFormattedDate()}.zip`);
+        showStatus(`Successfully processed ${success} of ${fileStore.length} file(s), including a COMBINED XML.`, 'success');
+      }else{
+        showStatus('No files were processed successfully. Check errors above.', 'error');
+      }
+
       toggleLoading(false);
     }
 
     async function handlePreview(fileId){
-      const item=fileStore.find(f=>f.id===fileId); if(!item) return;
-      toggleLoading(true,'Generating preview...');
+      const item = fileStore.find(f => f.id === fileId);
+      if(!item) return;
+
+      toggleLoading(true, 'Generating preview...');
+
       try{
         const nameLower = item.file.name.toLowerCase();
         if(!(nameLower.endsWith('.xlsx') || nameLower.endsWith('.xls'))){
           throw new Error('Preview not available: file is not Excel (.xlsx/.xls).');
         }
 
-        const rows=await readFileAsNormalisedRows(item.file);
-        const region=currentRegion();
-        const mode=document.querySelector('input[name="mode"]:checked').value;
-        const lang=item.file.name.split('.')[0].toUpperCase();
+        const rows = await readFileAsNormalisedRows(item.file);
+        const region = currentRegion();
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+        const lang = item.file.name.split('.')[0].toUpperCase();
 
-        const selectedEU=collectSelectionsEU();
-        const selectedME=collectSelectionsME();
+        const selectedEU = collectSelectionsEU();
+        const selectedME = collectSelectionsME();
 
-        let xml='';
-        if(region==='EU'){
-          const picks=(selectedEU && selectedEU[lang] && selectedEU[lang].length) ? selectedEU[lang] : EU_MARKETS?.[lang];
-          xml=generateEuXml(rows, lang, mode, picks, true);
-        }else{
-          const picks=(selectedME && selectedME[lang] && Object.keys(selectedME[lang]).length) ? selectedME[lang] : ME_MARKETS?.[lang];
-          xml=generateMeXml(rows, lang, mode, picks, true);
+        let xml = '';
+
+        if(region === 'EU'){
+          const picks = (selectedEU && selectedEU[lang] && selectedEU[lang].length)
+            ? selectedEU[lang]
+            : EU_MARKETS?.[lang];
+          xml = generateEuXml(rows, lang, mode, picks, true);
+        } else {
+          const picks = (selectedME && selectedME[lang] && Object.keys(selectedME[lang]).length)
+            ? selectedME[lang]
+            : ME_MARKETS?.[lang];
+          xml = generateMeXml(rows, lang, mode, picks, true);
         }
+
         if(!xml) throw new Error('No XML could be generated.');
 
-        modalContentCode.textContent=xml;
+        modalContentCode.textContent = xml;
         modal.classList.remove('hidden');
         Prism.highlightAll();
-      }catch(e){ showStatus(e.message,'error'); }
-      finally{ toggleLoading(false); }
+
+      }catch(e){
+        showStatus(e.message, 'error');
+      }finally{
+        toggleLoading(false);
+      }
     }
   </script>
 </body>
