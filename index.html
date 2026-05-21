@@ -1,1472 +1,924 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Organic Visibility Analyzer · Ralph Lauren</title>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-<style>
-  :root {
-    --navy:        #0a1f44;
-    --navy-deep:   #061434;
-    --navy-soft:   #1c3160;
-    --ink:         #1a1a1a;
-    --ink-soft:    #4a4a4a;
-    --ink-mute:    #8a8a8a;
-    --paper:       #fafaf7;
-    --paper-warm:  #f5f3ed;
-    --line:        #e3ddd0;
-    --line-soft:   #efeae0;
-    --gold:        #b8945a;
-    --gold-soft:   #d4b888;
-    --crimson:     #8b1f29;
-    --green:       #2f5d3a;
-    --amber:       #b87b2c;
-    --white:       #ffffff;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; }
-
-  body {
-    font-family: 'Inter', -apple-system, sans-serif;
-    background: var(--paper);
-    color: var(--ink);
-    font-size: 14px;
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-    background-image:
-      radial-gradient(circle at 20% 0%, rgba(184,148,90,0.04), transparent 50%),
-      radial-gradient(circle at 80% 100%, rgba(10,31,68,0.03), transparent 50%);
-  }
-
-  .display { font-family: 'Cormorant Garamond', 'Times New Roman', serif; font-weight: 500; letter-spacing: -0.01em; }
-  .small-caps { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-soft); }
-  .num { font-variant-numeric: tabular-nums; }
-
-  /* ========== HEADER ========== */
-  header {
-    border-bottom: 1px solid var(--line);
-    background: var(--white);
-    padding: 22px 40px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .logo {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 22px;
-    font-weight: 500;
-    letter-spacing: 0.32em;
-    color: var(--navy);
-  }
-  .header-meta { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-mute); }
-
-  /* ========== HERO ========== */
-  .hero {
-    text-align: center;
-    padding: 64px 24px 48px;
-    border-bottom: 1px solid var(--line-soft);
-  }
-  .hero .eyebrow {
-    font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase;
-    color: var(--gold); font-weight: 600; margin-bottom: 18px;
-  }
-  .hero h1 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 64px; font-weight: 500;
-    color: var(--navy); line-height: 1.05;
-    margin-bottom: 14px;
-  }
-  .hero h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
-  .hero .sub {
-    font-size: 15px; color: var(--ink-soft);
-    max-width: 580px; margin: 0 auto;
-    font-weight: 300;
-  }
-  .ornament {
-    display: flex; align-items: center; justify-content: center;
-    gap: 12px; margin: 22px auto 0;
-    color: var(--gold);
-  }
-  .ornament .line { height: 1px; width: 60px; background: var(--gold-soft); }
-  .ornament .dot { width: 4px; height: 4px; background: var(--gold); transform: rotate(45deg); }
-
-  /* ========== UPLOAD CARD ========== */
-  .container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
-  .upload-section { padding: 48px 0; }
-  .card {
-    background: var(--white);
-    border: 1px solid var(--line);
-    border-radius: 2px;
-    box-shadow: 0 1px 3px rgba(10,31,68,0.04);
-  }
-  .card-header {
-    padding: 22px 32px;
-    border-bottom: 1px solid var(--line-soft);
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .card-header h2 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 24px; font-weight: 500; color: var(--navy);
-  }
-  .card-body { padding: 32px; }
-  .step-label {
-    font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--navy); font-weight: 600; margin-bottom: 14px;
-    display: flex; align-items: center; gap: 10px;
-  }
-  .step-label::before {
-    content: ''; width: 18px; height: 1px; background: var(--gold);
-  }
-
-  /* drop zone */
-  .dropzone {
-    border: 1.5px dashed var(--line);
-    border-radius: 2px;
-    padding: 48px 24px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: var(--paper-warm);
-  }
-  .dropzone:hover, .dropzone.drag {
-    border-color: var(--gold);
-    background: var(--white);
-  }
-  .dropzone svg { width: 36px; height: 36px; color: var(--navy); margin-bottom: 14px; }
-  .dropzone .main-text { font-size: 14px; color: var(--ink); }
-  .dropzone .main-text strong { color: var(--navy); font-weight: 600; }
-  .dropzone .sub-text { font-size: 12px; color: var(--ink-mute); margin-top: 8px; letter-spacing: 0.04em; }
-  #fileInput { display: none; }
-
-  /* regex editor */
-  .regex-block { margin-top: 28px; }
-  .regex-block details { border: 1px solid var(--line-soft); border-radius: 2px; }
-  .regex-block summary {
-    padding: 14px 18px; cursor: pointer;
-    font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
-    color: var(--navy); font-weight: 600;
-    display: flex; align-items: center; gap: 10px;
-    list-style: none;
-  }
-  .regex-block summary::-webkit-details-marker { display: none; }
-  .regex-block summary::before {
-    content: '▸'; transition: transform 0.2s; font-size: 10px;
-  }
-  .regex-block details[open] summary::before { transform: rotate(90deg); }
-  .regex-block textarea {
-    width: 100%; padding: 14px 18px;
-    border: none;
-    font-family: 'SF Mono', Menlo, monospace;
-    font-size: 11px; line-height: 1.6;
-    color: var(--ink); background: var(--paper-warm);
-    resize: vertical; min-height: 80px;
-    display: block;
-  }
-  .regex-block textarea:focus { outline: none; background: var(--white); }
-  .regex-help { padding: 12px 18px; font-size: 11px; color: var(--ink-mute); background: var(--paper-warm); border-top: 1px solid var(--line-soft); line-height: 1.6; }
-  .regex-help code { background: var(--white); padding: 1px 5px; border: 1px solid var(--line-soft); border-radius: 2px; font-family: 'SF Mono', Menlo, monospace; font-size: 10px; color: var(--navy); }
-  .regex-section { border-top: 1px solid var(--line-soft); }
-  .regex-section-label {
-    padding: 10px 18px 0; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
-    color: var(--navy); font-weight: 600;
-  }
-  .regex-section-label .regex-section-hint {
-    text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--ink-mute); margin-left: 4px;
-  }
-
-  /* state messages */
-  .state-msg { margin-top: 16px; padding: 12px 16px; border-radius: 2px; font-size: 13px; }
-  .state-msg.error { background: #fdf3f4; color: var(--crimson); border-left: 3px solid var(--crimson); }
-  .state-msg.success { background: #f3f7f3; color: var(--green); border-left: 3px solid var(--green); }
-  .state-msg.loading { background: #f5f3ed; color: var(--ink-soft); border-left: 3px solid var(--gold); }
-
-  /* ========== DASHBOARD ========== */
-  .dashboard { display: none; padding: 24px 0 80px; }
-  .dashboard.active { display: block; }
-
-  .file-pill {
-    display: inline-flex; align-items: center; gap: 10px;
-    padding: 6px 14px; background: var(--white);
-    border: 1px solid var(--line); border-radius: 2px;
-    font-size: 12px; color: var(--ink-soft);
-  }
-  .file-pill .reset {
-    color: var(--ink-mute); cursor: pointer;
-    border: none; background: none; font-size: 14px;
-    padding: 0 0 0 4px;
-  }
-  .file-pill .reset:hover { color: var(--crimson); }
-
-  /* KPI grid */
-  .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 0;
-    border: 1px solid var(--line);
-    background: var(--white);
-    margin: 24px 0 0;
-  }
-  .kpi {
-    padding: 22px 20px;
-    border-right: 1px solid var(--line-soft);
-    position: relative;
-  }
-  .kpi:last-child { border-right: none; }
-  .kpi .label {
-    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
-    color: var(--ink-mute); font-weight: 600; margin-bottom: 8px;
-  }
-  .kpi .value {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 32px; font-weight: 500;
-    color: var(--navy); line-height: 1;
-    font-variant-numeric: tabular-nums;
-  }
-  .kpi .delta { font-size: 11px; color: var(--ink-mute); margin-top: 6px; }
-  .kpi .delta strong.up { color: var(--green); }
-  .kpi .delta strong.down { color: var(--crimson); }
-
-  @media (max-width: 1024px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } .kpi:nth-child(3n) { border-right: none; } }
-  @media (max-width: 640px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .kpi:nth-child(2n) { border-right: none; } }
-
-  /* TABS */
-  .tabs {
-    display: flex; gap: 0;
-    border-bottom: 1px solid var(--line);
-    margin: 32px 0 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .tabs::-webkit-scrollbar { display: none; }
-  .tab {
-    padding: 14px 20px;
-    font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
-    color: var(--ink-mute); font-weight: 600;
-    background: none; border: none;
-    border-bottom: 2px solid transparent;
-    cursor: pointer; white-space: nowrap;
-    transition: all 0.15s;
-    margin-bottom: -1px;
-  }
-  .tab:hover { color: var(--navy); }
-  .tab.active { color: var(--navy); border-bottom-color: var(--gold); }
-  .tab .count {
-    display: inline-block; margin-left: 6px;
-    font-size: 10px; padding: 2px 6px;
-    background: var(--paper-warm); color: var(--ink-soft);
-    border-radius: 8px; letter-spacing: 0;
-  }
-  .tab.active .count { background: var(--navy); color: var(--white); }
-
-  /* PANEL */
-  .panel { display: none; padding: 28px 0; }
-  .panel.active { display: block; }
-
-  .panel-header {
-    display: flex; align-items: flex-end; justify-content: space-between;
-    margin-bottom: 20px; gap: 24px; flex-wrap: wrap;
-  }
-  .panel-header h3 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 32px; font-weight: 500; color: var(--navy);
-    line-height: 1.1;
-  }
-  .panel-header p { font-size: 13px; color: var(--ink-soft); margin-top: 4px; max-width: 540px; }
-
-  .controls {
-    display: flex; gap: 8px; align-items: center;
-    flex-wrap: wrap;
-  }
-  .control-input, .control-select {
-    padding: 8px 12px;
-    border: 1px solid var(--line);
-    background: var(--white);
-    font-family: inherit; font-size: 12px;
-    color: var(--ink);
-    border-radius: 2px;
-    min-width: 180px;
-  }
-  .control-input:focus, .control-select:focus { outline: none; border-color: var(--gold); }
-  .btn {
-    padding: 8px 16px;
-    border: 1px solid var(--navy);
-    background: var(--white); color: var(--navy);
-    font-family: inherit; font-size: 11px;
-    letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600;
-    cursor: pointer; border-radius: 2px;
-    transition: all 0.15s;
-  }
-  .btn:hover { background: var(--navy); color: var(--white); }
-  .btn.primary { background: var(--navy); color: var(--white); }
-  .btn.primary:hover { background: var(--navy-deep); }
-
-  .chip-group { display: inline-flex; border: 1px solid var(--line); border-radius: 2px; overflow: hidden; }
-  .chip {
-    padding: 7px 14px; font-size: 11px; font-weight: 600;
-    letter-spacing: 0.1em; text-transform: uppercase;
-    background: var(--white); color: var(--ink-soft);
-    border: none; cursor: pointer;
-    border-right: 1px solid var(--line);
-  }
-  .chip:last-child { border-right: none; }
-  .chip.active { background: var(--navy); color: var(--white); }
-  .chip:hover:not(.active) { background: var(--paper-warm); }
-
-  /* TABLE */
-  .table-wrap {
-    background: var(--white);
-    border: 1px solid var(--line);
-    overflow-x: auto;
-  }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th {
-    text-align: left;
-    padding: 14px 14px;
-    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
-    color: var(--ink-mute); font-weight: 600;
-    background: var(--paper-warm);
-    border-bottom: 1px solid var(--line);
-    cursor: pointer; user-select: none;
-    white-space: nowrap;
-    position: sticky; top: 0;
-  }
-  th:hover { color: var(--navy); }
-  th .sort-arrow { color: var(--gold); margin-left: 4px; }
-  td {
-    padding: 14px 14px;
-    border-bottom: 1px solid var(--line-soft);
-    color: var(--ink); vertical-align: middle;
-  }
-  tr:hover td { background: var(--paper-warm); }
-  td.num { font-variant-numeric: tabular-nums; text-align: right; }
-
-  .keyword-cell { font-weight: 500; color: var(--navy); max-width: 320px; }
-  .keyword-cell .badge {
-    display: inline-block; margin-left: 6px;
-    font-size: 9px; padding: 1px 6px;
-    background: var(--gold); color: var(--white);
-    letter-spacing: 0.1em; text-transform: uppercase;
-    vertical-align: middle; font-weight: 600;
-  }
-  .keyword-cell .badge.gen { background: var(--navy-soft); }
-  .url-cell {
-    max-width: 280px; overflow: hidden; text-overflow: ellipsis;
-    white-space: nowrap; font-size: 11px; color: var(--ink-soft);
-    font-family: 'SF Mono', Menlo, monospace;
-  }
-  .url-cell a { color: var(--ink-soft); text-decoration: none; }
-  .url-cell a:hover { color: var(--navy); text-decoration: underline; }
-
-  .pos-pill {
-    display: inline-block; padding: 3px 9px;
-    font-size: 11px; font-weight: 600;
-    border-radius: 12px; min-width: 32px;
-    text-align: center; font-variant-numeric: tabular-nums;
-  }
-  .pos-pill.p1 { background: #f3f7f3; color: var(--green); }
-  .pos-pill.p2-3 { background: #f8f5e9; color: var(--amber); }
-  .pos-pill.p4-10 { background: var(--paper-warm); color: var(--ink-soft); }
-  .pos-pill.p11-20 { background: #f3eee7; color: var(--ink-soft); }
-  .pos-pill.p21-50 { background: #fdf3f4; color: var(--crimson); }
-  .pos-pill.p51 { background: #fdebec; color: var(--crimson); font-weight: 700; }
-
-  .delta-cell { font-variant-numeric: tabular-nums; font-weight: 500; }
-  .delta-cell.up { color: var(--green); }
-  .delta-cell.down { color: var(--crimson); }
-  .delta-cell.flat { color: var(--ink-mute); }
-  .delta-cell.new { color: var(--gold); font-weight: 600; }
-
-  .sparkline { display: inline-block; vertical-align: middle; }
-
-  /* pagination */
-  .pagination {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 18px;
-    background: var(--white);
-    border: 1px solid var(--line);
-    border-top: none;
-    font-size: 12px; color: var(--ink-soft);
-  }
-  .pagination .pages { display: flex; gap: 4px; align-items: center; }
-  .page-btn {
-    padding: 5px 10px; border: 1px solid var(--line);
-    background: var(--white); color: var(--ink-soft);
-    font-size: 11px; cursor: pointer; border-radius: 2px;
-    font-family: inherit;
-  }
-  .page-btn:hover:not(:disabled) { border-color: var(--navy); color: var(--navy); }
-  .page-btn.active { background: var(--navy); color: var(--white); border-color: var(--navy); }
-  .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  .empty-state {
-    padding: 80px 24px; text-align: center;
-    color: var(--ink-mute);
-  }
-  .empty-state h4 {
-    font-family: 'Cormorant Garamond', serif; font-size: 26px;
-    color: var(--navy); margin-bottom: 8px; font-weight: 500;
-  }
-
-  /* OVERVIEW PANEL */
-  .overview-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 32px;
-  }
-  @media (max-width: 900px) { .overview-grid { grid-template-columns: 1fr; } }
-
-  .chart-card {
-    background: var(--white);
-    border: 1px solid var(--line);
-    padding: 24px;
-  }
-  .chart-card h4 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 22px; color: var(--navy); margin-bottom: 4px; font-weight: 500;
-  }
-  .chart-card .sub { font-size: 12px; color: var(--ink-mute); margin-bottom: 22px; }
-
-  .bar-chart { display: flex; flex-direction: column; gap: 12px; }
-  .bar-row { display: grid; grid-template-columns: 90px 1fr 110px; gap: 14px; align-items: center; }
-  .bar-row .bar-label { font-size: 12px; color: var(--ink-soft); font-weight: 500; }
-  .bar-row .bar-track {
-    height: 22px; background: var(--paper-warm); position: relative;
-    border-radius: 1px; overflow: hidden;
-  }
-  .bar-row .bar-fill {
-    height: 100%; background: var(--navy);
-    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .bar-row .bar-meta {
-    font-size: 11px; color: var(--ink-soft);
-    text-align: right; font-variant-numeric: tabular-nums;
-  }
-  .bar-row .bar-meta strong { color: var(--navy); font-size: 13px; }
-
-  .donut { display: flex; align-items: center; gap: 24px; }
-  .donut svg { width: 140px; height: 140px; flex-shrink: 0; }
-  .donut-legend { font-size: 12px; }
-  .donut-legend .item {
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: 12px;
-  }
-  .donut-legend .swatch { width: 10px; height: 10px; flex-shrink: 0; }
-  .donut-legend .name { color: var(--ink-soft); }
-  .donut-legend .val {
-    margin-left: auto; font-weight: 600; color: var(--navy);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .footer {
-    margin-top: 80px; padding: 32px 24px;
-    border-top: 1px solid var(--line);
-    text-align: center;
-    font-size: 11px; color: var(--ink-mute); letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-
-  /* loading spinner */
-  .spinner {
-    display: inline-block; width: 14px; height: 14px;
-    border: 2px solid var(--line); border-top-color: var(--gold);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    vertical-align: middle; margin-right: 8px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .dashboard.active > * { animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
-  .dashboard.active > *:nth-child(2) { animation-delay: 0.05s; }
-  .dashboard.active > *:nth-child(3) { animation-delay: 0.1s; }
-
-  /* responsive */
-  @media (max-width: 700px) {
-    header { padding: 16px 20px; }
-    .hero { padding: 40px 20px; }
-    .hero h1 { font-size: 40px; }
-    .panel-header h3 { font-size: 24px; }
-    .controls { width: 100%; }
-    .control-input, .control-select { flex: 1; min-width: 0; }
-  }
-</style>
-</head>
-<body>
-
-<header>
-  <div class="logo">RALPH&nbsp;LAUREN</div>
-  <div class="header-meta">SEO · Internal Tool</div>
-</header>
-
-<section class="hero">
-  <div class="eyebrow">Organic Performance Suite</div>
-  <h1>Visibility <em>Analyzer</em></h1>
-  <p class="sub">Upload a Semrush organic positions export and instantly inspect brand defence, ranking trends, cannibalisation and quick-win opportunities — all client-side, your data never leaves the browser.</p>
-  <div class="ornament"><span class="line"></span><span class="dot"></span><span class="line"></span></div>
-</section>
-
-<div class="container">
-
-  <!-- UPLOAD SECTION -->
-  <section class="upload-section" id="uploadSection">
-    <div class="card">
-      <div class="card-header">
-        <h2>Begin a new analysis</h2>
-        <span class="small-caps">.xlsx · .csv</span>
-      </div>
-      <div class="card-body">
-
-        <div class="step-label">Step 01 — Upload Semrush export</div>
-
-        <div class="dropzone" id="dropzone">
-          <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-          </svg>
-          <div class="main-text"><strong>Click to upload</strong> or drag and drop</div>
-          <div class="sub-text">Semrush Organic Positions export · .xlsx or .csv</div>
-        </div>
-        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
-
-        <div class="regex-block">
-          <details>
-            <summary>Step 02 — Brand classification rules (advanced)</summary>
-            <div class="regex-section">
-              <div class="regex-section-label">Brand pattern <span class="regex-section-hint">— matches → classified as Brand</span></div>
-              <textarea id="regexInput" spellcheck="false">(?:ralph\s*lauren|ralph)|(?:ralf|raph|raphael|raplh|rapph|raugh|raulph|rough|rallh|raloh|ralhp|ralpj|ralpg|talph|falph|rslph|ralp\[h|ralp|lauf)\s*lauren|polo\s+(?:lauren|raph\s*lauren|raphael\s*lauren|raulph\s*lauren|raplh\s*lauren)|\blauren\s+(?:bag|bags|handbag|handbags|dress|dresses|jeans|polo|purses|shorts|shirt|shirts|t-?shirt|coat|jumper|hoodie|sweater|tracksuit|sandals|cap|hat|gillet|gilet|sweatshirt|boots?|trainers?|store|outlet|sale)\b|\b(?:laureen|rafle|lorraine|raulph\s*luaren|raloh\s*lairen|larfloren)\b|(?:拉夫劳伦|ラルフローレン|拉夫|ラルフ|رالف\s*لورين|رالف|ральф|ראלף|بولو)|\b(?:rrl|rlx|rll|rl)\b|\brl\s*50\b|\bpolo\s*11\b|\bpolos?\b.{1,40}\bpolos?\b|\b(?:double\s*rl|purple\s*label|pink\s*pony|polo\s*bear|polo\s*sport|polo\s*club|polo\s*red|polo\s*bar)\b|\bcurve\b|romance(?:\b|$)</textarea>
-            </div>
-            <div class="regex-section">
-              <div class="regex-section-label">Exclusion pattern <span class="regex-section-hint">— matches → forced to Generic (competitor brands &amp; ambiguous terms)</span></div>
-              <textarea id="exclusionInput" spellcheck="false">\bsaint\s*laurent\b|\bst\.?\s*laurent\b|\byves\s*saint\s*laurent\b|\bysl\b|\bu\.?s\.?\s*polo\s*ass?n\b|\bpolo\s*ass?n\b|\blauren\s+(?:k|long|pop|book|cafe|hemp|conrad|bacall|hutton|graham|cohan|jauregui|alaina)\b|\b(?:candy|green|furniture\s+by)\s+lauren\b|\brl\s+(?:meaning|home\s+decor)\b|\bbedford\s+rl\b|\bengland\s+rl\b|\bteam\s+(?:floral\s+)?rl\b|^rl\s*\.?$|^shop\s+rl$|\brl\s+down\b</textarea>
-            </div>
-            <div class="regex-help">Both case-insensitive &amp; Unicode. Logic: if a keyword contains <code>ralph</code> (or a clear ralph typo: ralf, raph, raulph, etc.), it's always classified as Brand even if it matches the Exclusion list — this protects searches like <em>"ralph lauren us polo assn"</em>. Otherwise, Exclusion takes priority over Brand pattern.</div>
-          </details>
-        </div>
-
-        <div id="stateMsg"></div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top: 20px;">
-      <div class="card-header">
-        <h2>Required columns</h2>
-      </div>
-      <div class="card-body" style="font-size: 12px; color: var(--ink-soft); line-height: 1.8;">
-        <strong style="color: var(--navy);">Required:</strong>
-        <code style="background: var(--paper-warm); padding: 2px 6px; margin: 0 2px;">Keyword</code>
-        <code style="background: var(--paper-warm); padding: 2px 6px; margin: 0 2px;">Position</code>
-        <code style="background: var(--paper-warm); padding: 2px 6px; margin: 0 2px;">Previous position</code>
-        <code style="background: var(--paper-warm); padding: 2px 6px; margin: 0 2px;">Search Volume</code>
-        <code style="background: var(--paper-warm); padding: 2px 6px; margin: 0 2px;">URL</code>
-        <code style="background: var(--paper-warm); padding: 2px 6px; margin: 0 2px;">Traffic</code>
-        <br>
-        <strong style="color: var(--navy);">Optional:</strong>
-        <code style="background: var(--paper-warm); padding: 2px 6px; margin: 0 2px;">Keyword Difficulty</code>
-        <code style="background: var(--paper-warm); padding: 2px 6px; margin: 0 2px;">CPC</code>
-        <code style="background: var(--paper-warm); padding: 2px 6px; margin: 0 2px;">Trends</code>
-        <code style="background: var(--paper-warm); padding: 2px 6px; margin: 0 2px;">SERP Features by Keyword</code>
-        <code style="background: var(--paper-warm); padding: 2px 6px; margin: 0 2px;">Keyword Intents</code>
-        <code style="background: var(--paper-warm); padding: 2px 6px; margin: 0 2px;">Position Type</code>
-      </div>
-    </div>
-  </section>
-
-  <!-- DASHBOARD -->
-  <section class="dashboard" id="dashboard">
-
-    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-      <span class="file-pill">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span id="fileName"></span>
-        <button class="reset" id="resetBtn" title="Upload a different file">×</button>
-      </span>
-      <span class="small-caps" id="rowCountMeta"></span>
-    </div>
-
-    <div class="kpi-grid" id="kpiGrid"></div>
-
-    <div class="tabs" id="tabs">
-      <button class="tab active" data-panel="overview">Overview</button>
-      <button class="tab" data-panel="brandRisk">Brand at Risk <span class="count" id="cnt-brandRisk">0</span></button>
-      <button class="tab" data-panel="growing">Top Growing <span class="count" id="cnt-growing">0</span></button>
-      <button class="tab" data-panel="declining">Top Declining <span class="count" id="cnt-declining">0</span></button>
-      <button class="tab" data-panel="traffic">By Traffic</button>
-      <button class="tab" data-panel="cannibal">Cannibalisation <span class="count" id="cnt-cannibal">0</span></button>
-      <button class="tab" data-panel="opps">Quick Wins <span class="count" id="cnt-opps">0</span></button>
-      <button class="tab" data-panel="raw">Raw Data</button>
-    </div>
-
-    <!-- OVERVIEW -->
-    <div class="panel active" id="panel-overview">
-      <div class="panel-header">
-        <div>
-          <h3>At a glance</h3>
-          <p>How your organic footprint distributes by ranking position and traffic.</p>
-        </div>
-        <div class="controls">
-          <div class="chip-group" data-filter-group="overview">
-            <button class="chip active" data-filter="all">All</button>
-            <button class="chip" data-filter="brand">Brand</button>
-            <button class="chip" data-filter="generic">Generic</button>
-          </div>
-        </div>
-      </div>
-      <div class="overview-grid">
-        <div class="chart-card">
-          <h4>Position distribution</h4>
-          <div class="sub">Unique keywords by best-ranking position (across all URLs)</div>
-          <div class="bar-chart" id="posDist"></div>
-        </div>
-        <div class="chart-card">
-          <h4>Traffic share</h4>
-          <div class="sub">Estimated organic traffic, brand vs generic</div>
-          <div class="donut" id="trafficDonut"></div>
-        </div>
-      </div>
-
-      <div class="overview-grid" style="margin-top: 24px;">
-        <div class="chart-card">
-          <h4>Top traffic-driving URLs</h4>
-          <div class="sub">Aggregated estimated traffic per landing page</div>
-          <div class="bar-chart" id="topUrls"></div>
-        </div>
-        <div class="chart-card">
-          <h4>Position type mix</h4>
-          <div class="sub">Where your visibility lives</div>
-          <div class="bar-chart" id="posTypeMix"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- BRAND AT RISK -->
-    <div class="panel" id="panel-brandRisk">
-      <div class="panel-header">
-        <div>
-          <h3>Brand keywords not ranking #1</h3>
-          <p>Brand-classified keywords where no Ralph Lauren URL holds position 1 in the SERP. Best position across all your URLs is shown — these are the most urgent defence cases.</p>
-        </div>
-        <div class="controls">
-          <input type="text" class="control-input" placeholder="Search keyword…" data-search="brandRisk" />
-          <button class="btn" data-export="brandRisk">Export CSV</button>
-        </div>
-      </div>
-      <div id="tbl-brandRisk"></div>
-    </div>
-
-    <!-- GROWING -->
-    <div class="panel" id="panel-growing">
-      <div class="panel-header">
-        <div>
-          <h3>Top growing keywords</h3>
-          <p>Largest week-over-week position improvements, weighted by search volume so meaningful gains float to the top.</p>
-        </div>
-        <div class="controls">
-          <div class="chip-group" data-filter-group="growing">
-            <button class="chip active" data-filter="all">All</button>
-            <button class="chip" data-filter="brand">Brand</button>
-            <button class="chip" data-filter="generic">Generic</button>
-          </div>
-          <input type="text" class="control-input" placeholder="Search keyword…" data-search="growing" />
-          <button class="btn" data-export="growing">Export CSV</button>
-        </div>
-      </div>
-      <div id="tbl-growing"></div>
-    </div>
-
-    <!-- DECLINING -->
-    <div class="panel" id="panel-declining">
-      <div class="panel-header">
-        <div>
-          <h3>Top declining keywords</h3>
-          <p>Largest position drops and lost rankings, weighted by search volume.</p>
-        </div>
-        <div class="controls">
-          <div class="chip-group" data-filter-group="declining">
-            <button class="chip active" data-filter="all">All</button>
-            <button class="chip" data-filter="brand">Brand</button>
-            <button class="chip" data-filter="generic">Generic</button>
-            <button class="chip" data-filter="lost">Lost only</button>
-          </div>
-          <input type="text" class="control-input" placeholder="Search keyword…" data-search="declining" />
-          <button class="btn" data-export="declining">Export CSV</button>
-        </div>
-      </div>
-      <div id="tbl-declining"></div>
-    </div>
-
-    <!-- TRAFFIC -->
-    <div class="panel" id="panel-traffic">
-      <div class="panel-header">
-        <div>
-          <h3>By traffic</h3>
-          <p>Top traffic-driving keywords. Toggle between brand and generic to see what's actually pulling the most users.</p>
-        </div>
-        <div class="controls">
-          <div class="chip-group" data-filter-group="traffic">
-            <button class="chip active" data-filter="all">All</button>
-            <button class="chip" data-filter="brand">Brand</button>
-            <button class="chip" data-filter="generic">Generic</button>
-          </div>
-          <input type="text" class="control-input" placeholder="Search keyword…" data-search="traffic" />
-          <button class="btn" data-export="traffic">Export CSV</button>
-        </div>
-      </div>
-      <div id="tbl-traffic"></div>
-    </div>
-
-    <!-- CANNIBALIZATION -->
-    <div class="panel" id="panel-cannibal">
-      <div class="panel-header">
-        <div>
-          <h3>Cannibalisation candidates</h3>
-          <p>Keywords where multiple URLs rank in the top 20. Often a sign you're competing with yourself — consolidating intent into one strong page typically improves position 1 capture.</p>
-        </div>
-        <div class="controls">
-          <input type="text" class="control-input" placeholder="Search keyword…" data-search="cannibal" />
-          <button class="btn" data-export="cannibal">Export CSV</button>
-        </div>
-      </div>
-      <div id="tbl-cannibal"></div>
-    </div>
-
-    <!-- QUICK WINS -->
-    <div class="panel" id="panel-opps">
-      <div class="panel-header">
-        <div>
-          <h3>Quick-win opportunities</h3>
-          <p>Generic (non-brand) keywords ranking positions 2–10. The closer to #1, the more incremental traffic available — sorted by potential value (volume × CPC).</p>
-        </div>
-        <div class="controls">
-          <input type="text" class="control-input" placeholder="Search keyword…" data-search="opps" />
-          <button class="btn" data-export="opps">Export CSV</button>
-        </div>
-      </div>
-      <div id="tbl-opps"></div>
-    </div>
-
-    <!-- RAW -->
-    <div class="panel" id="panel-raw">
-      <div class="panel-header">
-        <div>
-          <h3>Raw data</h3>
-          <p>Full export, searchable and sortable. Useful for ad-hoc digging.</p>
-        </div>
-        <div class="controls">
-          <div class="chip-group" data-filter-group="raw">
-            <button class="chip active" data-filter="all">All</button>
-            <button class="chip" data-filter="brand">Brand</button>
-            <button class="chip" data-filter="generic">Generic</button>
-          </div>
-          <input type="text" class="control-input" placeholder="Search keyword or URL…" data-search="raw" />
-          <button class="btn" data-export="raw">Export CSV</button>
-        </div>
-      </div>
-      <div id="tbl-raw"></div>
-    </div>
-
-  </section>
-
-  <div class="footer">Internal SEO Tool · Built for Ralph Lauren</div>
-</div>
-
-<script>
-'use strict';
-
-/* =========================================================
-   STATE
-========================================================= */
-const STATE = {
-  rawRows: [],        // every row from the file
-  uniqueByKeyword: [], // best (lowest position) row per keyword
-  brandRegex: null,
-  exclusionRegex: null,
-  ralphRegex: null,   // override: if matches, brand wins regardless of exclusion
-  fileName: '',
-  panels: {},         // per-panel filter/sort/page state
-};
-
-const REQUIRED_COLS = ['Keyword', 'Position', 'Previous position', 'Search Volume', 'URL', 'Traffic'];
-
-/* =========================================================
-   UPLOAD HANDLING
-========================================================= */
-const dropzone   = document.getElementById('dropzone');
-const fileInput  = document.getElementById('fileInput');
-const stateMsg   = document.getElementById('stateMsg');
-const dashboard  = document.getElementById('dashboard');
-const upSection  = document.getElementById('uploadSection');
-
-dropzone.addEventListener('click', () => fileInput.click());
-['dragover','dragenter'].forEach(ev =>
-  dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('drag'); })
-);
-['dragleave','drop'].forEach(ev =>
-  dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('drag'); })
-);
-dropzone.addEventListener('drop', e => {
-  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-});
-fileInput.addEventListener('change', e => {
-  if (e.target.files.length) handleFile(e.target.files[0]);
-});
-
-document.getElementById('resetBtn').addEventListener('click', () => {
-  upSection.style.display = '';
-  dashboard.classList.remove('active');
-  stateMsg.innerHTML = '';
-  fileInput.value = '';
-});
-
-function setStatus(type, msg) {
-  if (!type) { stateMsg.innerHTML = ''; return; }
-  stateMsg.innerHTML = `<div class="state-msg ${type}">${type === 'loading' ? '<span class="spinner"></span>' : ''}${msg}</div>`;
-}
-
-function handleFile(file) {
-  STATE.fileName = file.name;
-  setStatus('loading', `Parsing <strong>${file.name}</strong>…`);
-
-  // Compile regexes
-  try {
-    STATE.brandRegex = new RegExp(document.getElementById('regexInput').value.trim(), 'iu');
-    const exclVal = document.getElementById('exclusionInput').value.trim();
-    STATE.exclusionRegex = exclVal ? new RegExp(exclVal, 'iu') : null;
-    // Ralph-override: a fixed pattern that, when matched, forces brand=true even if exclusion matches
-    STATE.ralphRegex = new RegExp(
-      '\\b(?:ralph|ralf|raph|raphael|raulph|raplh|raloh|ralhp|ralpg|ralpj|talph|falph|rslph|rapph|raugh|rough|rallh)\\b|拉夫|ラルフ|رالف|ральф|ראלף',
-      'iu'
-    );
-  } catch (e) {
-    setStatus('error', `Invalid regex: ${e.message}`);
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, { type: 'array', cellDates: true });
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
-      processRows(rows);
-    } catch (err) {
-      console.error(err);
-      setStatus('error', `Failed to parse file: ${err.message}`);
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SEO XML Generator</title>
+  <meta name="robots" content="noindex,nofollow">
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { rl: { navy: '#1D2F4E', gold: '#B5A07E' } },
+          boxShadow: { soft: '0 10px 20px rgba(0,0,0,.06), 0 6px 6px rgba(0,0,0,.06)' },
+          borderRadius: { xl: '1rem', '2xl': '1.25rem' }
+        }
+      }
     }
-  };
-  reader.onerror = () => setStatus('error', 'Failed to read file');
-  reader.readAsArrayBuffer(file);
-}
+  </script>
 
-function classifyKeyword(kw) {
-  const hasRalph = STATE.ralphRegex.test(kw);
-  // If ralph appears, intent is RL → always brand (override exclusion)
-  if (hasRalph) return STATE.brandRegex.test(kw);
-  // Otherwise, exclusion takes priority
-  if (STATE.exclusionRegex && STATE.exclusionRegex.test(kw)) return false;
-  return STATE.brandRegex.test(kw);
-}
+  <!-- Libs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
-function processRows(rows) {
-  if (!rows.length) { setStatus('error', 'File appears empty'); return; }
-  const cols = Object.keys(rows[0]);
-  const missing = REQUIRED_COLS.filter(c => !cols.includes(c));
-  if (missing.length) {
-    setStatus('error', `Missing required columns: ${missing.join(', ')}`);
-    return;
-  }
+  <!-- Prism -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
 
-  // normalise
-  STATE.rawRows = rows.map(r => {
-    const kw = String(r['Keyword'] || '').trim();
-    const isBrand = classifyKeyword(kw);
-    const pos = Number(r['Position']) || 0;
-    const prev = Number(r['Previous position']) || 0;
-    return {
-      keyword: kw,
-      position: pos,
-      prevPosition: prev,
-      delta: prev > 0 ? prev - pos : 0,        // positive = improved
-      isNew: prev === 0,
-      isLost: pos >= 100 && prev > 0 && prev < 100,
-      volume: Number(r['Search Volume']) || 0,
-      kd: Number(r['Keyword Difficulty']) || 0,
-      cpc: Number(r['CPC']) || 0,
-      url: String(r['URL'] || ''),
-      traffic: Number(r['Traffic']) || 0,
-      trafficPct: Number(r['Traffic (%)']) || 0,
-      trafficCost: Number(r['Traffic Cost']) || 0,
-      trends: String(r['Trends'] || ''),
-      serpFeatures: String(r['SERP Features by Keyword'] || ''),
-      intents: String(r['Keyword Intents'] || ''),
-      posType: String(r['Position Type'] || ''),
-      isBrand
-    };
-  }).filter(r => r.keyword);
+  <style>
+    body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+    .file-label.dragover { background: rgba(29,47,78,.06); border-color: #1D2F4E; }
+    .modal-content { max-height: 70vh; }
+    body.bg-after-login { background: #fff; position: relative; overflow-x: hidden; }
+    body.bg-after-login::before {
+      content: ""; position: fixed; inset: 0; z-index: -1;
+      background-image: url('./background.avif');
+      background-size: cover; background-position: center; background-repeat: no-repeat;
+      opacity: 0.2; pointer-events: none;
+    }
+  </style>
 
-  // build uniqueByKeyword: best (lowest) position row per keyword
-  const map = new Map();
-  STATE.rawRows.forEach(r => {
-    const ex = map.get(r.keyword);
-    if (!ex || r.position < ex.position) map.set(r.keyword, r);
-  });
-  STATE.uniqueByKeyword = Array.from(map.values());
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+</head>
+<body class="bg-white text-gray-900">
 
-  // success → render
-  setStatus('success', `Loaded <strong>${STATE.rawRows.length.toLocaleString()}</strong> rows · <strong>${STATE.uniqueByKeyword.length.toLocaleString()}</strong> unique keywords`);
-  setTimeout(() => {
-    upSection.style.display = 'none';
-    dashboard.classList.add('active');
-    document.getElementById('fileName').textContent = STATE.fileName;
-    document.getElementById('rowCountMeta').textContent = `${STATE.rawRows.length.toLocaleString()} rows · ${STATE.uniqueByKeyword.length.toLocaleString()} keywords`;
-    renderAll();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, 350);
-}
+  <!-- LOGIN -->
+  <div id="login-overlay" class="fixed inset-0 bg-rl-navy/95 flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-soft w-full max-w-md p-8 border border-rl-gold/40">
+      <h1 class="text-2xl font-bold text-rl-navy">SEO XML Generator</h1>
+      <p class="text-sm text-gray-600 mt-1">Restricted access</p>
+      <form id="login-form" class="mt-6 space-y-4">
+        <div>
+          <label class="text-sm font-medium text-gray-700">Username</label>
+          <input id="login-user" type="text" class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rl-gold" placeholder="Username" autocomplete="username"/>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-gray-700">Password</label>
+          <input id="login-pass" type="password" class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rl-gold" placeholder="********" autocomplete="current-password"/>
+        </div>
+        <div class="flex items-center justify-between">
+          <label class="flex items-center gap-2 text-sm text-gray-600">
+            <input id="remember-me" type="checkbox" class="rounded border-gray-300 text-rl-navy focus:ring-rl-gold"/> Remember me
+          </label>
+          <button class="bg-rl-navy text-white px-4 py-2 rounded-lg hover:opacity-90" type="submit">Enter</button>
+        </div>
+        <p id="login-error" class="text-red-600 text-sm hidden">Invalid credentials.</p>
+      </form>
+    </div>
+  </div>
 
-/* =========================================================
-   DERIVED DATASETS
-========================================================= */
-function fmtN(n) {
-  if (n == null || isNaN(n)) return '—';
-  if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(1) + 'M';
-  if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(1) + 'K';
-  return n.toLocaleString();
-}
-function fmtFull(n) { return (n == null || isNaN(n)) ? '—' : n.toLocaleString(); }
-function fmtPct(n) { return n.toFixed(1) + '%'; }
+  <div class="container mx-auto p-4 md:p-8 max-w-6xl">
+    <header class="text-center mb-8">
+      <h1 class="text-4xl font-extrabold text-rl-navy">SEO XML Generator</h1>
+      <p class="text-gray-600 mt-2">Convert <strong>Excel (.xlsx)</strong> data to market-specific XML feeds for SFCC.</p>
+    </header>
 
-function getDataset(name) {
-  switch(name) {
-    case 'brandRisk':
-      return STATE.uniqueByKeyword.filter(r => r.isBrand && r.position > 1);
+    <div class="flex flex-col gap-8">
+      <main class="bg-white border border-rl-gold/40 p-6 md:p-8 rounded-2xl shadow-soft">
+        <!-- Region + Mode -->
+        <div class="grid md:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-lg font-semibold text-rl-navy mb-3">1. Select Region</label>
+            <div class="flex gap-4">
+              <label class="flex items-center p-4 border rounded-lg cursor-pointer flex-1 has-[:checked]:bg-rl-navy/5 has-[:checked]:border-rl-navy">
+                <input type="radio" name="region" value="EU" class="w-5 h-5 text-rl-navy" checked>
+                <span class="ml-3 text-lg font-medium">EU</span>
+              </label>
+              <label class="flex items-center p-4 border rounded-lg cursor-pointer flex-1 has-[:checked]:bg-rl-navy/5 has-[:checked]:border-rl-navy">
+                <input type="radio" name="region" value="ME" class="w-5 h-5 text-rl-navy">
+                <span class="ml-3 text-lg font-medium">ME</span>
+              </label>
+            </div>
+          </div>
+          <div>
+            <label class="block text-lg font-semibold text-rl-navy mb-3">Mode</label>
+            <div class="flex gap-4">
+              <label class="flex items-center p-4 border rounded-lg cursor-pointer flex-1 has-[:checked]:bg-rl-navy/5 has-[:checked]:border-rl-navy">
+                <input type="radio" name="mode" value="simple" class="w-5 h-5 text-rl-navy" checked>
+                <span class="ml-3 text-lg font-medium">Simple (title, description, H1)</span>
+              </label>
+              <label class="flex items-center p-4 border rounded-lg cursor-pointer flex-1 has-[:checked]:bg-rl-navy/5 has-[:checked]:border-rl-navy">
+                <input type="radio" name="mode" value="facets" class="w-5 h-5 text-rl-navy">
+                <span class="ml-3 text-lg font-medium">Facets (adds refined fields)</span>
+              </label>
+            </div>
+          </div>
+        </div>
 
-    case 'growing':
-      return STATE.uniqueByKeyword
-        .filter(r => r.delta > 0 && !r.isNew)
-        .map(r => ({ ...r, _score: r.delta * Math.log10(Math.max(r.volume, 10)) }));
+        <!-- Upload -->
+        <div class="mt-6">
+          <label class="block text-lg font-semibold text-rl-navy mb-3">2. Upload Excel Files</label>
+          <label id="drop-zone" class="file-label flex flex-col items-center justify-center w-full h-36 px-4 text-center border-2 border-dashed rounded-xl cursor-pointer bg-white">
+            <svg class="w-8 h-8 mb-3 text-rl-navy" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/></svg>
+            <p class="mb-2 text-sm text-gray-600">
+              <span class="font-semibold">Click to upload</span> or drag and drop
+              <span class="font-semibold">Excel (.xlsx/.xls)</span>
+            </p>
+          </label>
+          <input id="file-upload" type="file" class="hidden" multiple accept=".xlsx,.xls"/>
+          <p class="text-xs text-gray-500 mt-2">CSV files are not supported. Please upload native Excel workbooks.</p>
+        </div>
 
-    case 'declining':
-      return STATE.uniqueByKeyword
-        .filter(r => r.delta < 0 || r.isLost)
-        .map(r => ({ ...r, _score: Math.abs(r.delta || 100) * Math.log10(Math.max(r.volume, 10)) }));
+        <!-- File list -->
+        <div id="file-list-container" class="space-y-2 mt-6 hidden">
+          <div class="flex justify-between items-center mb-2">
+            <h3 class="text-lg font-semibold text-rl-navy">File Queue</h3>
+            <button id="clear-btn" class="text-sm text-rl-navy hover:underline">Clear All</button>
+          </div>
+          <div id="file-list" class="space-y-2"></div>
+        </div>
 
-    case 'traffic':
-      return STATE.uniqueByKeyword.filter(r => r.traffic > 0);
+        <!-- Generate -->
+        <div class="mt-6">
+          <button id="generate-btn" class="w-full bg-rl-navy text-white font-semibold py-3 px-4 rounded-xl hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-rl-gold disabled:bg-gray-400 disabled:cursor-not-allowed transition flex items-center justify-center">
+            <svg id="spinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <span id="generate-btn-text">Generate & Download ZIP</span>
+          </button>
+        </div>
 
-    case 'cannibal': {
-      const groups = new Map();
-      STATE.rawRows.forEach(r => {
-        if (r.position > 20) return;
-        if (!groups.has(r.keyword)) groups.set(r.keyword, []);
-        groups.get(r.keyword).push(r);
+        <!-- Advanced -->
+        <details id="advanced" class="mt-4 border rounded-xl p-4 open:shadow-soft">
+          <summary class="cursor-pointer select-none font-semibold text-rl-navy">Advanced Options — select markets</summary>
+          <p class="text-sm text-gray-600 mt-2">
+            All markets from the selected region are listed below, grouped by language.
+          </p>
+          <div id="market-checkboxes" class="grid gap-3 mt-4"></div>
+        </details>
+
+        <!-- Status -->
+        <div id="status" class="mt-6 text-center text-sm"></div>
+      </main>
+
+      <aside class="bg-white border border-rl-gold/40 p-6 md:p-8 rounded-2xl shadow-soft space-y-6">
+        <div>
+          <h3 class="text-lg font-semibold text-rl-navy mb-2">Required Excel Headers</h3>
+          <p class="text-sm text-gray-600">
+            Required:
+            <code class="px-2 py-0.5 bg-gray-100 rounded">cgid</code>
+            <code class="px-2 py-0.5 bg-gray-100 rounded">title</code>
+            <code class="px-2 py-0.5 bg-gray-100 rounded">desc</code>
+            <code class="px-2 py-0.5 bg-gray-100 rounded">h1</code>.
+            Optional (Facets):
+            <code class="px-2 py-0.5 bg-gray-100 rounded">ref_title</code>,
+            <code class="px-2 py-0.5 bg-gray-100 rounded">ref_desc</code>,
+            <code class="px-2 py-0.5 bg-gray-100 rounded">ref_h1</code>.
+          </p>
+          <button id="download-template" class="mt-3 text-sm text-rl-navy underline">Download Excel template (.xlsx)</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Modal preview -->
+  <div id="preview-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-40 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col">
+      <div class="flex justify-between items-center p-4 border-b">
+        <h3 class="text-xl font-bold text-rl-navy">XML Preview</h3>
+        <button id="modal-close-btn" class="text-gray-500 hover:text-gray-900 text-3xl leading-none">&times;</button>
+      </div>
+      <div class="p-4 modal-content overflow-y-auto">
+        <pre class="line-numbers"><code id="modal-content-code" class="language-xml"></code></pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ---------- LOGIN (hash + base64) ---------- */
+    const B64_HASH = 'NmVhYzBmMmY1NDQ1YjhlYmJmYzI2OTNlMmEwODc0MjQzOWQ2Nzc5MTJmNDc4M2E2ODI1NGUyNTcyYzEwNmRmOA==';
+    const SALT = 'rl_salt_v1|';
+
+    const loginOverlay = document.getElementById('login-overlay');
+    const loginForm = document.getElementById('login-form');
+    const loginUser = document.getElementById('login-user');
+    const loginPass  = document.getElementById('login-pass');
+    const loginErr   = document.getElementById('login-error');
+    const rememberMe = document.getElementById('remember-me');
+
+    if (localStorage.getItem('rl_xml_auth') === 'ok') {
+      loginOverlay.classList.add('hidden');
+      document.body.classList.add('bg-after-login');
+    }
+
+    async function sha256Hex(str){
+      const enc = new TextEncoder().encode(str);
+      const buf = await crypto.subtle.digest('SHA-256', enc);
+      const bytes = Array.from(new Uint8Array(buf));
+      return bytes.map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+
+    function b64decodeToText(b64){
+      try { return atob(b64); } catch { return ''; }
+    }
+
+    loginForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const targetHex = b64decodeToText(B64_HASH);
+      const inputHex  = await sha256Hex(`${SALT}${loginUser.value}:${loginPass.value}`);
+      if (targetHex && inputHex === targetHex) {
+        loginErr.classList.add('hidden');
+        if (rememberMe.checked) localStorage.setItem('rl_xml_auth', 'ok');
+        loginOverlay.classList.add('hidden');
+        document.body.classList.add('bg-after-login');
+      } else {
+        loginErr.classList.remove('hidden');
+      }
+    });
+
+    /* ---------- CONSTANTS & STATE ---------- */
+    const XML_NAMESPACE = "http://www.demandware.com/xml/impex/catalog/2006-10-31";
+    const REQUIRED_HEADERS = ['cgid','title','desc','h1'];
+    const OPTIONAL_HEADERS = ['ref_title','ref_desc','ref_h1'];
+
+    const EU_PLACEHOLDER_CODES = ['UK','DE','ES','FR','IT','NL','PT','PL','SE'];
+    const EU_CURRENCY_PLACEHOLDER = '£';
+    const ME_PLACEHOLDER = '{{MARKET_BRAND}}';
+    const ME_LEGACY_TOKEN = { EN: 'Ralph Lauren® SA', AR: 'رالف لورين® س.ع' };
+
+    let EU_MARKETS = null;
+    let ME_MARKETS = null;
+    let fileStore = [];
+
+    /* ---------- ELEMENTS ---------- */
+    const fileInput = document.getElementById('file-upload');
+    const dropZone = document.getElementById('drop-zone');
+    const fileListContainer = document.getElementById('file-list-container');
+    const fileListDisplay = document.getElementById('file-list');
+    const clearBtn = document.getElementById('clear-btn');
+    const generateBtn = document.getElementById('generate-btn');
+    const spinner = document.getElementById('spinner');
+    const generateBtnText = document.getElementById('generate-btn-text');
+    const statusDiv = document.getElementById('status');
+    const modal = document.getElementById('preview-modal');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+    const modalContentCode = document.getElementById('modal-content-code');
+    const marketBox = document.getElementById('market-checkboxes');
+    const downloadTemplateBtn = document.getElementById('download-template');
+
+    /* ---------- LOAD JSON ---------- */
+    async function loadMarketJsons(){
+      const fail = (msg) => {
+        showStatus(msg, 'error');
+        generateBtn.disabled = true;
+      };
+
+      try{
+        const [euRes, meRes] = await Promise.all([
+          fetch('markets_eu.json'),
+          fetch('markets_me.json')
+        ]);
+
+        if (!euRes.ok) return fail('Failed to load markets_eu.json. Make sure it is placed next to this HTML.');
+        if (!meRes.ok) return fail('Failed to load markets_me.json. Make sure it is placed next to this HTML.');
+
+        const [eu, me] = await Promise.all([euRes.json(), meRes.json()]);
+
+        if (!eu || typeof eu !== 'object') return fail('Invalid markets_eu.json format.');
+        if (!me || typeof me !== 'object') return fail('Invalid markets_me.json format.');
+
+        EU_MARKETS = eu;
+        ME_MARKETS = me;
+        generateBtn.disabled = false;
+        populateMarketPicker();
+      }catch(e){
+        fail('Unable to load market JSON files. Check console and file paths.');
+        console.error(e);
+      }
+    }
+    loadMarketJsons();
+
+    /* ---------- UI EVENTS ---------- */
+    fileInput.addEventListener('change', e => addFilesToQueue(e.target.files));
+    clearBtn.addEventListener('click', clearFiles);
+    generateBtn.addEventListener('click', handleGeneration);
+    modalCloseBtn.addEventListener('click', () => modal.classList.add('hidden'));
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      addFilesToQueue(e.dataTransfer.files);
+    });
+
+    document.addEventListener('change', e => {
+      if (e.target.name === 'region') populateMarketPicker();
+      if (e.target.name === 'mode') populateMarketPicker();
+    });
+
+    fileListDisplay.addEventListener('click', e => {
+      if (e.target.closest('.preview-btn')) {
+        const id = e.target.closest('.file-item').dataset.id;
+        handlePreview(id);
+      }
+    });
+
+    downloadTemplateBtn.addEventListener('click', ()=>{
+      const wb = XLSX.utils.book_new();
+      const data = [
+        ['cgid','title','desc','h1','ref_title','ref_desc','ref_h1'],
+        ['men-clothing-poloshirts','Polo Shirts for Men | Ralph Lauren® UK','Shop today and get free returns.','Category H1','Refined Title','Refined Description','Refined H1']
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      XLSX.utils.book_append_sheet(wb, ws, 'Template');
+      XLSX.writeFile(wb, 'template.xlsx');
+    });
+
+    /* ---------- HELPERS ---------- */
+    const cleanseXml = s => (typeof s === 'string' ? s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '') : '');
+    const escapeXml  = s => cleanseXml(String(s)).replace(/[<>&'"]/g, c => ({
+      '<':'&lt;',
+      '>':'&gt;',
+      '&':'&amp;',
+      '\'':'&apos;',
+      '"':'&quot;'
+    }[c]));
+    const escapeReg = s => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+
+    const replaceCodesSafely = (text, codesMap) => {
+      if (!text) return '';
+      let out = text;
+      Object.keys(codesMap).forEach(code => {
+        const re = new RegExp(`\\b${code}\\b`, 'g');
+        out = out.replace(re, codesMap[code]);
       });
-      const out = [];
-      groups.forEach((rows, kw) => {
-        const distinctUrls = new Set(rows.map(x => x.url));
-        if (distinctUrls.size >= 2) {
-          rows.sort((a,b) => a.position - b.position);
-          out.push({
-            keyword: kw,
-            urlCount: distinctUrls.size,
-            volume: rows[0].volume,
-            isBrand: rows[0].isBrand,
-            bestPos: rows[0].position,
-            urls: rows
+      return out;
+    };
+
+    const replaceCurrency = (text, placeholder, to) => {
+      return text ? text.replace(new RegExp(escapeReg(placeholder), 'g'), to) : '';
+    };
+
+    function showStatus(message, type='info'){
+      statusDiv.textContent = message;
+      statusDiv.className = 'mt-6 text-center text-sm';
+      if(type === 'success') statusDiv.classList.add('text-green-700');
+      else if(type === 'error') statusDiv.classList.add('text-red-600');
+      else statusDiv.classList.add('text-gray-600');
+    }
+
+    function toggleLoading(isLoading, msg){
+      generateBtn.disabled = isLoading;
+      generateBtnText.textContent = isLoading ? msg : 'Generate & Download ZIP';
+      spinner.classList.toggle('hidden', !isLoading);
+    }
+
+    function getFormattedDate(){
+      const d = new Date();
+      return `${String(d.getDate()).padStart(2,'0')}_${String(d.getMonth()+1).padStart(2,'0')}_${d.getFullYear()}`;
+    }
+
+    /* ---------- FILE QUEUE ---------- */
+    function addFilesToQueue(files){
+      Array.from(files).forEach(file => {
+        const nameLower = file.name.toLowerCase();
+        const isExcel = nameLower.endsWith('.xlsx') || nameLower.endsWith('.xls');
+
+        if(!isExcel){
+          fileStore.push({
+            id:`file-${Date.now()}-${file.name}`,
+            file,
+            status:'error',
+            message:'Only Excel files (.xlsx/.xls) are supported.'
+          });
+          return;
+        }
+
+        if(!fileStore.some(i => i.file.name === file.name && i.file.size === file.size)){
+          fileStore.push({
+            id:`file-${Date.now()}-${file.name}`,
+            file,
+            status:'pending',
+            message:''
+          });
+        }
+      });
+
+      updateFileListUI();
+    }
+
+    function updateFileListUI(){
+      fileListContainer.classList.toggle('hidden', fileStore.length === 0);
+      fileListDisplay.innerHTML = '';
+
+      fileStore.forEach(item => {
+        const row = document.createElement('div');
+        row.dataset.id = item.id;
+        row.className = 'file-item flex items-center justify-between bg-gray-50 border rounded-xl p-2';
+
+        const iconClass =
+          item.status === 'success' ? 'text-green-600' :
+          item.status === 'error' ? 'text-red-600' :
+          'text-gray-400';
+
+        const left = document.createElement('div');
+        left.className = 'flex items-center gap-3';
+
+        const icon = document.createElement('svg');
+        icon.setAttribute('class', `w-5 h-5 ${iconClass}`);
+        icon.setAttribute('fill','none');
+        icon.setAttribute('stroke','currentColor');
+        icon.setAttribute('viewBox','0 0 24 24');
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m-4-4h8"/>';
+        left.appendChild(icon);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'text-sm font-medium truncate';
+        nameSpan.textContent = item.file.name;
+        left.appendChild(nameSpan);
+
+        const btn = document.createElement('button');
+        btn.className = 'preview-btn text-xs bg-white border px-2 py-1 rounded-md hover:bg-gray-100';
+        btn.textContent = 'Preview';
+
+        row.append(left, btn);
+        fileListDisplay.appendChild(row);
+
+        if(item.status === 'error' && item.message){
+          const p = document.createElement('p');
+          p.className = 'text-xs text-red-600 ml-8 -mt-1';
+          p.textContent = item.message;
+          fileListDisplay.appendChild(p);
+        }
+      });
+    }
+
+    function clearFiles(){
+      fileStore = [];
+      fileInput.value = '';
+      updateFileListUI();
+      showStatus('');
+    }
+
+    /* ---------- REGION / ADVANCED MARKETS ---------- */
+    function currentRegion(){
+      return document.querySelector('input[name="region"]:checked').value;
+    }
+
+    function populateMarketPicker(){
+      const region = currentRegion();
+      marketBox.innerHTML = '';
+
+      if(region === 'EU'){
+        if(!EU_MARKETS || Object.keys(EU_MARKETS).length === 0){
+          marketBox.innerHTML = '<p class="text-sm text-red-600">EU markets not loaded. Ensure markets_eu.json is available.</p>';
+          return;
+        }
+
+        Object.entries(EU_MARKETS).forEach(([langKey, markets]) => {
+          const group = document.createElement('div');
+          group.className = 'border rounded-lg p-3';
+          group.innerHTML = `
+            <div class="flex items-center justify-between">
+              <h4 class="font-semibold text-sm text-rl-navy">${langKey}</h4>
+              <div class="space-x-2">
+                <button type="button" class="text-xs underline" data-langkey="${langKey}" data-act="all">All</button>
+                <button type="button" class="text-xs underline" data-langkey="${langKey}" data-act="none">None</button>
+              </div>
+            </div>
+            <div class="mt-2 grid sm:grid-cols-2 lg:grid-cols-3 gap-2" id="box-${langKey}"></div>
+          `;
+          marketBox.appendChild(group);
+
+          const box = group.querySelector(`#box-${langKey}`);
+          markets.forEach(m => {
+            const el = document.createElement('label');
+            el.className = 'flex items-center gap-2 p-2 border rounded-lg';
+            el.innerHTML = `
+              <input type="checkbox" class="mkt-check"
+                     data-region="EU"
+                     data-langkey="${langKey}"
+                     data-code="${m.Code}"
+                     data-lang="${m.Lang}"
+                     data-cur="${m.Currency}" checked>
+              <span class="text-sm">${m.Code} <span class="text-gray-500">(${m.Lang})</span></span>
+            `;
+            box.appendChild(el);
+          });
+        });
+      } else {
+        if(!ME_MARKETS || Object.keys(ME_MARKETS).length === 0){
+          marketBox.innerHTML = '<p class="text-sm text-red-600">ME markets not loaded. Ensure markets_me.json is available.</p>';
+          return;
+        }
+
+        Object.entries(ME_MARKETS).forEach(([langKey, codesObj]) => {
+          const group = document.createElement('div');
+          group.className = 'border rounded-lg p-3';
+          group.innerHTML = `
+            <div class="flex items-center justify-between">
+              <h4 class="font-semibold text-sm text-rl-navy">${langKey}</h4>
+              <div class="space-x-2">
+                <button type="button" class="text-xs underline" data-langkey="${langKey}" data-act="all">All</button>
+                <button type="button" class="text-xs underline" data-langkey="${langKey}" data-act="none">None</button>
+              </div>
+            </div>
+            <div class="mt-2 grid sm:grid-cols-3 lg:grid-cols-4 gap-2" id="box-${langKey}"></div>
+          `;
+          marketBox.appendChild(group);
+
+          const box = group.querySelector(`#box-${langKey}`);
+          Object.keys(codesObj).forEach(code => {
+            const el = document.createElement('label');
+            el.className = 'flex items-center gap-2 p-2 border rounded-lg';
+            el.innerHTML = `
+              <input type="checkbox" class="mkt-check"
+                     data-region="ME"
+                     data-langkey="${langKey}"
+                     data-code="${code}" checked>
+              <span class="text-sm">${code}</span>
+            `;
+            box.appendChild(el);
+          });
+        });
+      }
+    }
+
+    marketBox.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      const langKey = btn.dataset.langkey;
+      const check = btn.dataset.act === 'all';
+      const checks = marketBox.querySelectorAll(`.mkt-check[data-langkey="${langKey}"]`);
+      checks.forEach(c => { c.checked = check; });
+    });
+
+    function collectSelectionsEU(){
+      const out = {};
+      document.querySelectorAll('.mkt-check[data-region="EU"]').forEach(c => {
+        if(c.checked){
+          const k = c.dataset.langkey;
+          out[k] ||= [];
+          out[k].push({
+            Code: c.dataset.code,
+            Lang: c.dataset.lang,
+            Currency: c.dataset.cur
           });
         }
       });
       return out;
     }
 
-    case 'opps':
-      return STATE.uniqueByKeyword
-        .filter(r => !r.isBrand && r.position >= 2 && r.position <= 10 && r.volume > 0)
-        .map(r => ({ ...r, _score: r.volume * Math.max(r.cpc, 0.1) / r.position }));
+    function collectSelectionsME(){
+      const out = {};
+      document.querySelectorAll('.mkt-check[data-region="ME"]').forEach(c => {
+        const k = c.dataset.langkey;
+        out[k] ||= {};
+        if(c.checked) out[k][c.dataset.code] = ME_MARKETS?.[k]?.[c.dataset.code];
+      });
+      return out;
+    }
 
-    case 'raw':
-      return STATE.rawRows;
-  }
-  return [];
-}
+    /* ---------- XLSX: robust read & normalise ---------- */
+    function normaliseHeader(h){
+      if (!h && h !== 0) return '';
+      return String(h).trim().toLowerCase().replace(/\s+/g,'_');
+    }
 
-function applyFilters(name, dataset) {
-  const ps = STATE.panels[name] || {};
-  let data = dataset.slice();
-  if (ps.search) {
-    const q = ps.search.toLowerCase();
-    data = data.filter(r =>
-      (r.keyword || '').toLowerCase().includes(q) ||
-      (r.url || '').toLowerCase().includes(q)
-    );
-  }
-  if (ps.filter && ps.filter !== 'all') {
-    if (ps.filter === 'brand')   data = data.filter(r => r.isBrand);
-    if (ps.filter === 'generic') data = data.filter(r => !r.isBrand);
-    if (ps.filter === 'lost')    data = data.filter(r => r.isLost);
-  }
-  if (ps.sort) {
-    const { key, dir } = ps.sort;
-    data.sort((a,b) => {
-      let av = a[key], bv = b[key];
-      if (typeof av === 'string') av = av.toLowerCase();
-      if (typeof bv === 'string') bv = bv.toLowerCase();
-      if (av == null) av = dir === 'asc' ? Infinity : -Infinity;
-      if (bv == null) bv = dir === 'asc' ? Infinity : -Infinity;
-      if (av < bv) return dir === 'asc' ? -1 : 1;
-      if (av > bv) return dir === 'asc' ? 1 : -1;
-      return 0;
-    });
-  }
-  return data;
-}
+    function readFileAsNormalisedRows(file){
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
 
-/* =========================================================
-   RENDER ALL
-========================================================= */
-function renderAll() {
-  renderKpis();
-  renderOverview();
-  // initial sorts per panel
-  STATE.panels = {
-    overview:  { filter: 'all' },
-    brandRisk: { sort: { key: 'volume', dir: 'desc' }, page: 1 },
-    growing:   { sort: { key: '_score', dir: 'desc' }, page: 1, filter: 'all' },
-    declining: { sort: { key: '_score', dir: 'desc' }, page: 1, filter: 'all' },
-    traffic:   { sort: { key: 'traffic', dir: 'desc' }, page: 1, filter: 'all' },
-    cannibal:  { sort: { key: 'volume', dir: 'desc' }, page: 1 },
-    opps:      { sort: { key: '_score', dir: 'desc' }, page: 1 },
-    raw:       { sort: { key: 'traffic', dir: 'desc' }, page: 1, filter: 'all' },
-  };
-  ['brandRisk','growing','declining','traffic','cannibal','opps','raw'].forEach(n => renderPanel(n));
-  updateCounts();
-  bindControls();
-}
+        reader.onload = e => {
+          try{
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, {type:'array'});
+            const ws = wb.Sheets[wb.SheetNames[0]];
 
-function renderKpis() {
-  const total = STATE.uniqueByKeyword.length;
-  const brand = STATE.uniqueByKeyword.filter(r => r.isBrand).length;
-  const generic = total - brand;
-  const top3 = STATE.uniqueByKeyword.filter(r => r.position <= 3).length;
-  const totalTraffic = STATE.uniqueByKeyword.reduce((s,r) => s + r.traffic, 0);
-  const brandRisk = getDataset('brandRisk').length;
-  const movers = STATE.uniqueByKeyword.filter(r => r.delta !== 0 && !r.isNew);
-  const upCount = movers.filter(r => r.delta > 0).length;
-  const downCount = movers.filter(r => r.delta < 0).length;
+            const headerRows = XLSX.utils.sheet_to_json(ws, { header:1, blankrows:false });
+            const headerRaw = (headerRows && headerRows[0]) ? headerRows[0] : [];
+            const headerMap = {};
 
-  document.getElementById('kpiGrid').innerHTML = `
-    <div class="kpi"><div class="label">Total keywords</div><div class="value">${fmtN(total)}</div><div class="delta">${fmtFull(STATE.rawRows.length)} rows in source</div></div>
-    <div class="kpi"><div class="label">Est. monthly traffic</div><div class="value">${fmtN(totalTraffic)}</div><div class="delta">${fmtFull(totalTraffic)} sessions</div></div>
-    <div class="kpi"><div class="label">Top 3 rankings</div><div class="value">${fmtN(top3)}</div><div class="delta">${fmtPct(top3 / total * 100)} of keywords</div></div>
-    <div class="kpi"><div class="label">Brand · Generic</div><div class="value">${fmtN(brand)} · ${fmtN(generic)}</div><div class="delta">${fmtPct(brand/total*100)} brand · ${fmtPct(generic/total*100)} generic</div></div>
-    <div class="kpi"><div class="label">Brand at risk</div><div class="value" style="color:${brandRisk>0?'var(--crimson)':'var(--green)'}">${fmtN(brandRisk)}</div><div class="delta">brand kws not at #1</div></div>
-    <div class="kpi"><div class="label">Movement</div><div class="value">${fmtN(upCount + downCount)}</div><div class="delta"><strong class="up">↑ ${fmtN(upCount)}</strong> &nbsp; <strong class="down">↓ ${fmtN(downCount)}</strong></div></div>
-  `;
-}
+            headerRaw.forEach(orig => {
+              const canon = normaliseHeader(orig);
+              if (canon) headerMap[canon] = String(orig);
+            });
 
-function renderOverview() {
-  const filter = (STATE.panels.overview && STATE.panels.overview.filter) || 'all';
+            const missing = REQUIRED_HEADERS.filter(h => !(h in headerMap));
+            if (missing.length) {
+              reject(new Error(`Missing Excel headers: ${missing.join(', ')}`));
+              return;
+            }
 
-  // Filter dataset for the 3 sliceable charts
-  let unique = STATE.uniqueByKeyword;
-  let raw = STATE.rawRows;
-  if (filter === 'brand') {
-    unique = unique.filter(r => r.isBrand);
-    raw = raw.filter(r => r.isBrand);
-  } else if (filter === 'generic') {
-    unique = unique.filter(r => !r.isBrand);
-    raw = raw.filter(r => !r.isBrand);
-  }
+            const rowsObj = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
-  // Position distribution
-  const buckets = [
-    { label: 'Position 1', test: r => r.position === 1, color: 'var(--green)' },
-    { label: 'Position 2–3', test: r => r.position >= 2 && r.position <= 3, color: 'var(--amber)' },
-    { label: 'Position 4–10', test: r => r.position >= 4 && r.position <= 10, color: 'var(--navy)' },
-    { label: 'Position 11–20', test: r => r.position >= 11 && r.position <= 20, color: 'var(--navy-soft)' },
-    { label: 'Position 21–50', test: r => r.position >= 21 && r.position <= 50, color: 'var(--gold)' },
-    { label: 'Position 51+', test: r => r.position >= 51, color: 'var(--crimson)' },
-  ];
-  const total = unique.length || 1;
-  const counts = buckets.map(b => ({ ...b, count: unique.filter(b.test).length }));
-  const max = Math.max(...counts.map(c => c.count), 1);
+            const normalised = rowsObj.map(row => {
+              const out = {};
 
-  document.getElementById('posDist').innerHTML = counts.map(c => `
-    <div class="bar-row">
-      <div class="bar-label">${c.label}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${(c.count/max*100).toFixed(1)}%; background:${c.color}"></div></div>
-      <div class="bar-meta"><strong>${fmtFull(c.count)}</strong> · ${fmtPct(c.count/total*100)}</div>
-    </div>
-  `).join('');
+              [...REQUIRED_HEADERS, ...OPTIONAL_HEADERS].forEach(canon => {
+                const orig = headerMap[canon];
+                out[canon] = orig in row ? row[orig] : "";
+              });
 
-  // Traffic donut — ALWAYS shows brand vs generic split of full dataset (orientation chart)
-  const brandTraffic = STATE.uniqueByKeyword.filter(r => r.isBrand).reduce((s,r) => s + r.traffic, 0);
-  const genericTraffic = STATE.uniqueByKeyword.filter(r => !r.isBrand).reduce((s,r) => s + r.traffic, 0);
-  const totalTraffic = brandTraffic + genericTraffic;
-  const brandPct = totalTraffic > 0 ? brandTraffic / totalTraffic : 0;
+              Object.keys(row).forEach(k => {
+                const canonExtra = normaliseHeader(k);
+                if (!(canonExtra in out)) out[canonExtra] = row[k];
+              });
 
-  const r = 55, cx = 70, cy = 70, circ = 2 * Math.PI * r;
-  const brandLen = circ * brandPct;
-  document.getElementById('trafficDonut').innerHTML = `
-    <svg viewBox="0 0 140 140">
-      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--gold)" stroke-width="18"/>
-      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--navy)" stroke-width="18"
-        stroke-dasharray="${brandLen} ${circ}" transform="rotate(-90 ${cx} ${cy})" stroke-linecap="butt"/>
-      <text x="${cx}" y="${cy-4}" text-anchor="middle" font-family="Cormorant Garamond" font-size="22" fill="var(--navy)" font-weight="500">${fmtPct(brandPct*100)}</text>
-      <text x="${cx}" y="${cy+12}" text-anchor="middle" font-family="Inter" font-size="9" fill="var(--ink-mute)" letter-spacing="2">BRAND</text>
-    </svg>
-    <div class="donut-legend">
-      <div class="item"><span class="swatch" style="background:var(--navy)"></span><span class="name">Brand</span><span class="val">${fmtN(brandTraffic)}</span></div>
-      <div class="item"><span class="swatch" style="background:var(--gold)"></span><span class="name">Generic</span><span class="val">${fmtN(genericTraffic)}</span></div>
-    </div>
-  `;
+              return out;
+            });
 
-  // Top URLs (filtered)
-  const urlMap = new Map();
-  raw.forEach(r => {
-    if (!r.url) return;
-    urlMap.set(r.url, (urlMap.get(r.url) || 0) + r.traffic);
-  });
-  const topUrls = Array.from(urlMap.entries())
-    .sort((a,b) => b[1] - a[1])
-    .slice(0, 8);
-  const maxU = topUrls[0]?.[1] || 1;
-  document.getElementById('topUrls').innerHTML = topUrls.length ? topUrls.map(([u, t]) => {
-    const path = u.replace(/^https?:\/\/[^/]+/, '') || '/';
-    return `
-      <div class="bar-row">
-        <div class="bar-label" style="font-size:10px;font-family:'SF Mono',monospace;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${path}">${path}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${(t/maxU*100).toFixed(1)}%"></div></div>
-        <div class="bar-meta"><strong>${fmtN(t)}</strong></div>
-      </div>
-    `;
-  }).join('') : '<div style="color:var(--ink-mute);padding:20px 0;font-size:13px">No data for this segment.</div>';
+            resolve(normalised);
+          }catch(err){
+            reject(new Error('Failed to parse the Excel file.'));
+          }
+        };
 
-  // Position type mix (filtered)
-  const ptMap = new Map();
-  raw.forEach(r => {
-    const t = r.posType || 'Unknown';
-    ptMap.set(t, (ptMap.get(t) || 0) + 1);
-  });
-  const pts = Array.from(ptMap.entries()).sort((a,b) => b[1] - a[1]);
-  const maxP = pts[0]?.[1] || 1;
-  document.getElementById('posTypeMix').innerHTML = pts.length ? pts.map(([t, c]) => `
-    <div class="bar-row">
-      <div class="bar-label">${t}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${(c/maxP*100).toFixed(1)}%; background:var(--navy-soft)"></div></div>
-      <div class="bar-meta"><strong>${fmtFull(c)}</strong></div>
-    </div>
-  `).join('') : '<div style="color:var(--ink-mute);padding:20px 0;font-size:13px">No data for this segment.</div>';
-}
+        reader.onerror = () => reject(new Error('Failed to read the file.'));
+        reader.readAsArrayBuffer(file);
+      });
+    }
 
-function updateCounts() {
-  document.getElementById('cnt-brandRisk').textContent = fmtN(getDataset('brandRisk').length);
-  document.getElementById('cnt-growing').textContent   = fmtN(getDataset('growing').length);
-  document.getElementById('cnt-declining').textContent = fmtN(getDataset('declining').length);
-  document.getElementById('cnt-cannibal').textContent  = fmtN(getDataset('cannibal').length);
-  document.getElementById('cnt-opps').textContent      = fmtN(getDataset('opps').length);
-}
+    /* ---------- XML RENDER ---------- */
+    function createAggregatedCategory(cgid, entry, mode){
+      const lines = [];
+      lines.push(`    <category category-id="${escapeXml(cgid)}">`);
+      lines.push('        <page-attributes>');
+      lines.push(`            <page-title xml:lang="${escapeXml(entry.langCode)}">${escapeXml(String(entry.title ?? ''))}</page-title>`);
+      lines.push(`            <page-description xml:lang="${escapeXml(entry.langCode)}">${escapeXml(String(entry.desc ?? ''))}</page-description>`);
+      lines.push('        </page-attributes>');
+      lines.push('        <custom-attributes>');
 
-/* =========================================================
-   PANEL TABLES
-========================================================= */
-function posPill(p) {
-  if (!p) return '—';
-  let cls = 'p51';
-  if (p === 1) cls = 'p1';
-  else if (p <= 3) cls = 'p2-3';
-  else if (p <= 10) cls = 'p4-10';
-  else if (p <= 20) cls = 'p11-20';
-  else if (p <= 50) cls = 'p21-50';
-  return `<span class="pos-pill ${cls}">${p}</span>`;
-}
+      if (mode === 'facets') {
+        const rt = entry.ref_title ?? '';
+        const rd = entry.ref_desc ?? '';
+        const rh = entry.ref_h1 ?? '';
 
-function deltaCell(r) {
-  if (r.isNew) return `<span class="delta-cell new">NEW</span>`;
-  if (r.isLost) return `<span class="delta-cell down">LOST</span>`;
-  if (!r.delta) return `<span class="delta-cell flat">—</span>`;
-  return `<span class="delta-cell ${r.delta>0?'up':'down'}">${r.delta>0?'↑':'↓'} ${Math.abs(r.delta)}</span>`;
-}
-
-function brandBadge(r) {
-  return r.isBrand
-    ? '<span class="badge">Brand</span>'
-    : '<span class="badge gen">Generic</span>';
-}
-
-function sparkline(trends) {
-  if (!trends) return '';
-  const vals = trends.split(',').map(v => parseFloat(v)).filter(v => !isNaN(v));
-  if (vals.length < 2) return '';
-  const w = 60, h = 18;
-  const max = Math.max(...vals, 1);
-  const pts = vals.map((v, i) => `${(i/(vals.length-1))*w},${h - (v/max)*h}`).join(' ');
-  const last = vals[vals.length-1], first = vals[0];
-  const color = last > first ? 'var(--green)' : last < first ? 'var(--crimson)' : 'var(--ink-mute)';
-  return `<svg class="sparkline" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.4"/></svg>`;
-}
-
-function urlCell(u) {
-  if (!u) return '—';
-  const path = u.replace(/^https?:\/\/[^/]+/, '') || '/';
-  return `<a href="${u}" target="_blank" rel="noopener" title="${u}">${path}</a>`;
-}
-
-const SCHEMAS = {
-  brandRisk: [
-    { key: 'keyword',  label: 'Keyword',     render: r => `<div class="keyword-cell">${r.keyword}${brandBadge(r)}</div>` },
-    { key: 'position', label: 'Best pos.',   align: 'right', render: r => posPill(r.position) },
-    { key: 'delta',    label: 'Δ',           align: 'right', render: deltaCell },
-    { key: 'volume',   label: 'Volume',      align: 'right', render: r => `<span class="num">${fmtFull(r.volume)}</span>` },
-    { key: 'traffic',  label: 'Traffic',     align: 'right', render: r => `<span class="num">${fmtFull(r.traffic)}</span>` },
-    { key: 'kd',       label: 'KD',          align: 'right', render: r => `<span class="num">${r.kd ? r.kd.toFixed(0) : '—'}</span>` },
-    { key: 'url',      label: 'URL',         render: r => `<div class="url-cell">${urlCell(r.url)}</div>` },
-  ],
-  growing: [
-    { key: 'keyword',  label: 'Keyword',     render: r => `<div class="keyword-cell">${r.keyword}${brandBadge(r)}</div>` },
-    { key: 'position', label: 'Pos.',        align: 'right', render: r => posPill(r.position) },
-    { key: 'prevPosition', label: 'Prev.',   align: 'right', render: r => `<span class="num" style="color:var(--ink-mute)">${r.prevPosition || '—'}</span>` },
-    { key: 'delta',    label: 'Δ',           align: 'right', render: deltaCell },
-    { key: 'volume',   label: 'Volume',      align: 'right', render: r => `<span class="num">${fmtFull(r.volume)}</span>` },
-    { key: 'traffic',  label: 'Traffic',     align: 'right', render: r => `<span class="num">${fmtFull(r.traffic)}</span>` },
-    { key: 'url',      label: 'URL',         render: r => `<div class="url-cell">${urlCell(r.url)}</div>` },
-  ],
-  declining: [
-    { key: 'keyword',  label: 'Keyword',     render: r => `<div class="keyword-cell">${r.keyword}${brandBadge(r)}</div>` },
-    { key: 'position', label: 'Pos.',        align: 'right', render: r => posPill(r.position) },
-    { key: 'prevPosition', label: 'Prev.',   align: 'right', render: r => `<span class="num" style="color:var(--ink-mute)">${r.prevPosition || '—'}</span>` },
-    { key: 'delta',    label: 'Δ',           align: 'right', render: deltaCell },
-    { key: 'volume',   label: 'Volume',      align: 'right', render: r => `<span class="num">${fmtFull(r.volume)}</span>` },
-    { key: 'traffic',  label: 'Traffic',     align: 'right', render: r => `<span class="num">${fmtFull(r.traffic)}</span>` },
-    { key: 'url',      label: 'URL',         render: r => `<div class="url-cell">${urlCell(r.url)}</div>` },
-  ],
-  traffic: [
-    { key: 'keyword',  label: 'Keyword',     render: r => `<div class="keyword-cell">${r.keyword}${brandBadge(r)}</div>` },
-    { key: 'position', label: 'Pos.',        align: 'right', render: r => posPill(r.position) },
-    { key: 'volume',   label: 'Volume',      align: 'right', render: r => `<span class="num">${fmtFull(r.volume)}</span>` },
-    { key: 'traffic',  label: 'Traffic',     align: 'right', render: r => `<span class="num"><strong>${fmtFull(r.traffic)}</strong></span>` },
-    { key: 'trafficPct', label: 'Traffic %', align: 'right', render: r => `<span class="num">${r.trafficPct.toFixed(2)}%</span>` },
-    { key: 'cpc',      label: 'CPC',         align: 'right', render: r => `<span class="num">$${r.cpc.toFixed(2)}</span>` },
-    { key: 'url',      label: 'URL',         render: r => `<div class="url-cell">${urlCell(r.url)}</div>` },
-  ],
-  cannibal: [
-    { key: 'keyword',  label: 'Keyword',     render: r => `<div class="keyword-cell">${r.keyword}${r.isBrand ? '<span class="badge">Brand</span>' : '<span class="badge gen">Generic</span>'}</div>` },
-    { key: 'urlCount', label: 'URLs',        align: 'right', render: r => `<span class="pos-pill p21-50">${r.urlCount}</span>` },
-    { key: 'bestPos',  label: 'Best pos.',   align: 'right', render: r => posPill(r.bestPos) },
-    { key: 'volume',   label: 'Volume',      align: 'right', render: r => `<span class="num">${fmtFull(r.volume)}</span>` },
-    { key: 'urls',     label: 'Competing URLs',  render: r => {
-        return `<div style="font-size:11px;font-family:'SF Mono',monospace;line-height:1.7;">` +
-          r.urls.slice(0, 5).map(x => {
-            const path = x.url.replace(/^https?:\/\/[^/]+/, '') || '/';
-            return `<div><span class="pos-pill p4-10" style="font-size:9px;padding:1px 5px;min-width:24px">${x.position}</span> <a href="${x.url}" target="_blank" style="color:var(--ink-soft)" title="${x.url}">${path}</a></div>`;
-          }).join('') +
-          (r.urls.length > 5 ? `<div style="color:var(--ink-mute);margin-top:2px;">+ ${r.urls.length - 5} more</div>` : '') +
-          `</div>`;
+        if (rt) lines.push(`            <custom-attribute xml:lang="${escapeXml(entry.langCode)}" attribute-id="refinedPageTitle">${escapeXml(rt)}</custom-attribute>`);
+        if (rd) lines.push(`            <custom-attribute xml:lang="${escapeXml(entry.langCode)}" attribute-id="refinedPageDescription">${escapeXml(rd)}</custom-attribute>`);
+        if (rh) lines.push(`            <custom-attribute xml:lang="${escapeXml(entry.langCode)}" attribute-id="refinedPageH1Tag">${escapeXml(rh)}</custom-attribute>`);
       }
-    },
-  ],
-  opps: [
-    { key: 'keyword',  label: 'Keyword',     render: r => `<div class="keyword-cell">${r.keyword}</div>` },
-    { key: 'position', label: 'Pos.',        align: 'right', render: r => posPill(r.position) },
-    { key: 'volume',   label: 'Volume',      align: 'right', render: r => `<span class="num">${fmtFull(r.volume)}</span>` },
-    { key: 'cpc',      label: 'CPC',         align: 'right', render: r => `<span class="num">$${r.cpc.toFixed(2)}</span>` },
-    { key: 'kd',       label: 'KD',          align: 'right', render: r => `<span class="num">${r.kd ? r.kd.toFixed(0) : '—'}</span>` },
-    { key: 'traffic',  label: 'Traffic now', align: 'right', render: r => `<span class="num">${fmtFull(r.traffic)}</span>` },
-    { key: '_score',   label: 'Opp. score',  align: 'right', render: r => `<span class="num"><strong>${fmtN(Math.round(r._score))}</strong></span>` },
-    { key: 'url',      label: 'URL',         render: r => `<div class="url-cell">${urlCell(r.url)}</div>` },
-  ],
-  raw: [
-    { key: 'keyword',  label: 'Keyword',     render: r => `<div class="keyword-cell">${r.keyword}${brandBadge(r)}</div>` },
-    { key: 'position', label: 'Pos.',        align: 'right', render: r => posPill(r.position) },
-    { key: 'delta',    label: 'Δ',           align: 'right', render: deltaCell },
-    { key: 'volume',   label: 'Volume',      align: 'right', render: r => `<span class="num">${fmtFull(r.volume)}</span>` },
-    { key: 'traffic',  label: 'Traffic',     align: 'right', render: r => `<span class="num">${fmtFull(r.traffic)}</span>` },
-    { key: 'kd',       label: 'KD',          align: 'right', render: r => `<span class="num">${r.kd || '—'}</span>` },
-    { key: 'cpc',      label: 'CPC',         align: 'right', render: r => `<span class="num">$${r.cpc.toFixed(2)}</span>` },
-    { key: 'posType',  label: 'Type',        render: r => `<span style="font-size:11px;color:var(--ink-soft)">${r.posType}</span>` },
-    { key: 'url',      label: 'URL',         render: r => `<div class="url-cell">${urlCell(r.url)}</div>` },
-  ],
-};
 
-const PAGE_SIZE = 50;
-
-function renderPanel(name) {
-  const schema = SCHEMAS[name];
-  const dataset = applyFilters(name, getDataset(name));
-  const ps = STATE.panels[name];
-  const totalPages = Math.max(1, Math.ceil(dataset.length / PAGE_SIZE));
-  if (ps.page > totalPages) ps.page = totalPages;
-  const start = (ps.page - 1) * PAGE_SIZE;
-  const slice = dataset.slice(start, start + PAGE_SIZE);
-
-  const container = document.getElementById('tbl-' + name);
-
-  if (!dataset.length) {
-    container.innerHTML = `
-      <div class="empty-state" style="background:var(--white);border:1px solid var(--line)">
-        <h4>Nothing to show</h4>
-        <p>No rows match the current filters.</p>
-      </div>`;
-    return;
-  }
-
-  const head = schema.map(c => {
-    const isSorted = ps.sort && ps.sort.key === c.key;
-    const arrow = isSorted ? `<span class="sort-arrow">${ps.sort.dir === 'asc' ? '↑' : '↓'}</span>` : '';
-    return `<th data-sort-key="${c.key}" data-panel="${name}" style="${c.align==='right'?'text-align:right;':''}">${c.label}${arrow}</th>`;
-  }).join('');
-
-  const body = slice.map(r => {
-    return '<tr>' + schema.map(c => {
-      const align = c.align === 'right' ? ' style="text-align:right;"' : '';
-      return `<td${align}>${c.render(r)}</td>`;
-    }).join('') + '</tr>';
-  }).join('');
-
-  // build pagination
-  const pageNums = [];
-  const around = 2;
-  for (let i = 1; i <= totalPages; i++) {
-    if (i === 1 || i === totalPages || (i >= ps.page - around && i <= ps.page + around)) {
-      pageNums.push(i);
-    } else if (pageNums[pageNums.length - 1] !== '…') {
-      pageNums.push('…');
-    }
-  }
-
-  container.innerHTML = `
-    <div class="table-wrap">
-      <table>
-        <thead><tr>${head}</tr></thead>
-        <tbody>${body}</tbody>
-      </table>
-    </div>
-    <div class="pagination">
-      <span>Showing <strong style="color:var(--navy)">${fmtFull(start+1)}–${fmtFull(Math.min(start+PAGE_SIZE, dataset.length))}</strong> of <strong style="color:var(--navy)">${fmtFull(dataset.length)}</strong></span>
-      <div class="pages">
-        <button class="page-btn" data-page="prev" data-panel="${name}" ${ps.page===1?'disabled':''}>‹ Prev</button>
-        ${pageNums.map(n => n === '…'
-          ? '<span style="color:var(--ink-mute);padding:0 4px">…</span>'
-          : `<button class="page-btn ${n===ps.page?'active':''}" data-page="${n}" data-panel="${name}">${n}</button>`
-        ).join('')}
-        <button class="page-btn" data-page="next" data-panel="${name}" ${ps.page===totalPages?'disabled':''}>Next ›</button>
-      </div>
-    </div>
-  `;
-}
-
-/* =========================================================
-   CONTROLS BINDING
-========================================================= */
-function bindControls() {
-  // tabs
-  document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      const p = tab.dataset.panel;
-      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === tab));
-      document.querySelectorAll('.panel').forEach(panel => panel.classList.toggle('active', panel.id === 'panel-' + p));
-    });
-  });
-
-  // sort headers (delegated)
-  document.getElementById('dashboard').addEventListener('click', e => {
-    const th = e.target.closest('th[data-sort-key]');
-    if (th) {
-      const name = th.dataset.panel;
-      const key = th.dataset.sortKey;
-      const ps = STATE.panels[name];
-      if (ps.sort && ps.sort.key === key) ps.sort.dir = ps.sort.dir === 'asc' ? 'desc' : 'asc';
-      else ps.sort = { key, dir: 'desc' };
-      ps.page = 1;
-      renderPanel(name);
-      return;
-    }
-    const pg = e.target.closest('button[data-page]');
-    if (pg) {
-      const name = pg.dataset.panel;
-      const ps = STATE.panels[name];
-      const dataset = applyFilters(name, getDataset(name));
-      const totalPages = Math.max(1, Math.ceil(dataset.length / PAGE_SIZE));
-      if (pg.dataset.page === 'prev') ps.page = Math.max(1, ps.page - 1);
-      else if (pg.dataset.page === 'next') ps.page = Math.min(totalPages, ps.page + 1);
-      else ps.page = parseInt(pg.dataset.page, 10);
-      renderPanel(name);
-      window.scrollTo({ top: document.querySelector('.tabs').offsetTop - 20, behavior: 'smooth' });
-      return;
-    }
-    const exp = e.target.closest('button[data-export]');
-    if (exp) exportCsv(exp.dataset.export);
-  });
-
-  // search inputs
-  document.querySelectorAll('input[data-search]').forEach(input => {
-    let timer;
-    input.addEventListener('input', e => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        const name = input.dataset.search;
-        STATE.panels[name].search = input.value;
-        STATE.panels[name].page = 1;
-        renderPanel(name);
-      }, 200);
-    });
-  });
-
-  // chip filter groups
-  document.querySelectorAll('[data-filter-group]').forEach(group => {
-    group.addEventListener('click', e => {
-      const chip = e.target.closest('.chip');
-      if (!chip) return;
-      const name = group.dataset.filterGroup;
-      group.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c === chip));
-      STATE.panels[name].filter = chip.dataset.filter;
-      if (name === 'overview') {
-        renderOverview();
-      } else {
-        STATE.panels[name].page = 1;
-        renderPanel(name);
+      const h = entry.h1 ?? '';
+      if (h) {
+        lines.push(`            <custom-attribute xml:lang="${escapeXml(entry.langCode)}" attribute-id="alternateH1Tag">${escapeXml(h)}</custom-attribute>`);
       }
-    });
-  });
-}
 
-/* =========================================================
-   CSV EXPORT
-========================================================= */
-function exportCsv(name) {
-  const dataset = applyFilters(name, getDataset(name));
-  if (!dataset.length) return;
+      lines.push('        </custom-attributes>');
+      lines.push('    </category>');
+      return lines.join('\n');
+    }
 
-  const cols = name === 'cannibal'
-    ? ['keyword','urlCount','bestPos','volume','isBrand']
-    : ['keyword','position','prevPosition','delta','volume','traffic','trafficPct','kd','cpc','url','isBrand','posType','intents','serpFeatures'];
+    function generateEuCategories(rows, langKey, mode, selectedList, preview=false){
+      if(!EU_MARKETS?.[langKey]) return [];
 
-  const header = cols.join(',');
-  const escape = v => {
-    if (v == null) return '';
-    const s = String(v).replace(/"/g, '""');
-    return /[",\n]/.test(s) ? `"${s}"` : s;
-  };
-  const body = dataset.map(r => cols.map(c => escape(r[c])).join(',')).join('\n');
-  const csv = header + '\n' + body;
+      const data = preview ? rows.slice(0,1) : rows;
+      const markets = (selectedList && selectedList.length ? selectedList : EU_MARKETS[langKey]) || [];
+      const categories = [];
 
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `ralphlauren-${name}-${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
-}
+      data.forEach(r => {
+        const cgid  = r.cgid !== undefined ? String(r.cgid).trim() : '';
+        if(!cgid) return;
 
-</script>
+        const title = r.title !== undefined ? String(r.title).trim() : '';
+        const desc  = r.desc !== undefined ? String(r.desc).trim() : '';
+        const h1    = r.h1 !== undefined ? String(r.h1).trim() : '';
+        const rt    = r.ref_title !== undefined ? String(r.ref_title).trim() : '';
+        const rd    = r.ref_desc !== undefined ? String(r.ref_desc).trim() : '';
+        const rh    = r.ref_h1 !== undefined ? String(r.ref_h1).trim() : '';
+
+        markets.forEach(m => {
+          const codesMap = {};
+          EU_PLACEHOLDER_CODES.forEach(p => codesMap[p] = m.Code);
+
+          const T  = replaceCurrency(replaceCodesSafely(title, codesMap), EU_CURRENCY_PLACEHOLDER, m.Currency);
+          const D  = replaceCurrency(replaceCodesSafely(desc,  codesMap), EU_CURRENCY_PLACEHOLDER, m.Currency);
+          const H  = replaceCurrency(replaceCodesSafely(h1,    codesMap), EU_CURRENCY_PLACEHOLDER, m.Currency);
+          const RT = replaceCurrency(replaceCodesSafely(rt,    codesMap), EU_CURRENCY_PLACEHOLDER, m.Currency);
+          const RD = replaceCurrency(replaceCodesSafely(rd,    codesMap), EU_CURRENCY_PLACEHOLDER, m.Currency);
+          const RH = replaceCurrency(replaceCodesSafely(rh,    codesMap), EU_CURRENCY_PLACEHOLDER, m.Currency);
+
+          const entry = {
+            langCode: m.Lang,
+            title: T,
+            desc: D,
+            h1: H,
+            ref_title: RT,
+            ref_desc: RD,
+            ref_h1: RH
+          };
+
+          categories.push(createAggregatedCategory(cgid, entry, mode));
+        });
+      });
+
+      return categories;
+    }
+
+    function generateMeCategories(rows, langKey, mode, selectedMap, preview=false){
+      if(!ME_MARKETS?.[langKey]) return [];
+
+      const data = preview ? rows.slice(0,1) : rows;
+      const all = ME_MARKETS[langKey];
+      const markets = selectedMap && Object.keys(selectedMap).length ? selectedMap : all;
+      const categories = [];
+
+      data.forEach(r => {
+        const cgid = r.cgid !== undefined ? String(r.cgid).trim() : '';
+        if(!cgid) return;
+
+        const title = r.title !== undefined ? String(r.title).trim() : '';
+        const desc  = r.desc !== undefined ? String(r.desc).trim() : '';
+        const h1    = r.h1 !== undefined ? String(r.h1).trim() : '';
+        const rt    = r.ref_title !== undefined ? String(r.ref_title).trim() : '';
+        const rd    = r.ref_desc !== undefined ? String(r.ref_desc).trim() : '';
+        const rh    = r.ref_h1 !== undefined ? String(r.ref_h1).trim() : '';
+
+        Object.entries(markets).forEach(([code, brand]) => {
+          const langCode = `${langKey.toLowerCase()}-${code}`;
+
+          const applyBrand = (txt) => {
+            if(!txt) return '';
+            const legacy = ME_LEGACY_TOKEN[langKey];
+            if (txt.includes(ME_PLACEHOLDER)) return txt.replaceAll(ME_PLACEHOLDER, brand);
+            if (legacy && txt.includes(legacy)) return txt.replaceAll(legacy, brand);
+            return txt;
+          };
+
+          const entry = {
+            langCode,
+            title: applyBrand(title),
+            desc: applyBrand(desc),
+            h1: applyBrand(h1),
+            ref_title: mode === 'facets' ? applyBrand(rt) : '',
+            ref_desc: mode === 'facets' ? applyBrand(rd) : '',
+            ref_h1: mode === 'facets' ? applyBrand(rh) : ''
+          };
+
+          categories.push(createAggregatedCategory(cgid, entry, mode));
+        });
+      });
+
+      return categories;
+    }
+
+    function wrapCatalog(categories, catalogId){
+      if(!categories || !categories.length) return '';
+      return `<?xml version='1.0' encoding='utf-8'?>\n<catalog xmlns="${XML_NAMESPACE}" catalog-id="${catalogId}">\n${categories.join('\n')}\n</catalog>`;
+    }
+
+    function generateEuXml(rows, langKey, mode, selectedList, preview=false){
+      const categories = generateEuCategories(rows, langKey, mode, selectedList, preview);
+      return wrapCatalog(categories, 'siteCatalog_RalphLauren_EU');
+    }
+
+    function generateMeXml(rows, langKey, mode, selectedMap, preview=false){
+      const categories = generateMeCategories(rows, langKey, mode, selectedMap, preview);
+      return wrapCatalog(categories, 'siteCatalog_RalphLauren_ME');
+    }
+
+    /* ---------- ACTIONS ---------- */
+    async function handleGeneration(){
+      if(fileStore.length === 0){
+        showStatus('Please upload at least one Excel file (.xlsx/.xls).', 'error');
+        return;
+      }
+
+      toggleLoading(true, 'Processing files...');
+
+      const region = currentRegion();
+      const mode = document.querySelector('input[name="mode"]:checked').value;
+      const zip = new JSZip();
+      let success = 0;
+
+      const combinedCategories = [];
+
+      const selectedEU = region === 'EU' ? collectSelectionsEU() : null;
+      const selectedME = region === 'ME' ? collectSelectionsME() : null;
+
+      for(const item of fileStore){
+        try{
+          const nameLower = item.file.name.toLowerCase();
+
+          if(!(nameLower.endsWith('.xlsx') || nameLower.endsWith('.xls'))){
+            item.status = 'error';
+            item.message = 'Only Excel files (.xlsx/.xls) are supported.';
+            continue;
+          }
+
+          const rows = await readFileAsNormalisedRows(item.file);
+          const lang = item.file.name.split('.')[0].toUpperCase();
+
+          let xml = '';
+
+          if(region === 'EU'){
+            const picks = (selectedEU && selectedEU[lang] && selectedEU[lang].length)
+              ? selectedEU[lang]
+              : EU_MARKETS?.[lang];
+
+            xml = generateEuXml(rows, lang, mode, picks);
+
+            const cats = generateEuCategories(rows, lang, mode, picks);
+            combinedCategories.push(...cats);
+          } else {
+            const picks = (selectedME && selectedME[lang] && Object.keys(selectedME[lang]).length)
+              ? selectedME[lang]
+              : ME_MARKETS?.[lang];
+
+            xml = generateMeXml(rows, lang, mode, picks);
+
+            const cats = generateMeCategories(rows, lang, mode, picks);
+            combinedCategories.push(...cats);
+          }
+
+          if(!xml) throw new Error(`Language '${lang}' not configured for ${region}.`);
+
+          item.status = 'success';
+          item.message = '';
+          success++;
+
+          const fname = `000000000000000000000000000000_SEO_${region}_${lang}_${getFormattedDate()}.xml`;
+          zip.file(fname, xml);
+
+        }catch(err){
+          item.status = 'error';
+          item.message = err.message;
+        }
+      }
+
+      if (combinedCategories.length > 0) {
+        const combinedCatalogId = region === 'EU'
+          ? 'siteCatalog_RalphLauren_EU'
+          : 'siteCatalog_RalphLauren_ME';
+
+        const combinedXml = wrapCatalog(combinedCategories, combinedCatalogId);
+
+        zip.file(
+          `000000000000000000000000000000_SEO_${region}_COMBINED_${getFormattedDate()}.xml`,
+          combinedXml
+        );
+      }
+
+      updateFileListUI();
+
+      if(success > 0){
+        const blob = await zip.generateAsync({type:'blob'});
+        saveAs(blob, `xml_files_${region}_${getFormattedDate()}.zip`);
+        showStatus(`Successfully processed ${success} of ${fileStore.length} file(s), including a COMBINED XML.`, 'success');
+      }else{
+        showStatus('No files were processed successfully. Check errors above.', 'error');
+      }
+
+      toggleLoading(false);
+    }
+
+    async function handlePreview(fileId){
+      const item = fileStore.find(f => f.id === fileId);
+      if(!item) return;
+
+      toggleLoading(true, 'Generating preview...');
+
+      try{
+        const nameLower = item.file.name.toLowerCase();
+        if(!(nameLower.endsWith('.xlsx') || nameLower.endsWith('.xls'))){
+          throw new Error('Preview not available: file is not Excel (.xlsx/.xls).');
+        }
+
+        const rows = await readFileAsNormalisedRows(item.file);
+        const region = currentRegion();
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+        const lang = item.file.name.split('.')[0].toUpperCase();
+
+        const selectedEU = collectSelectionsEU();
+        const selectedME = collectSelectionsME();
+
+        let xml = '';
+
+        if(region === 'EU'){
+          const picks = (selectedEU && selectedEU[lang] && selectedEU[lang].length)
+            ? selectedEU[lang]
+            : EU_MARKETS?.[lang];
+          xml = generateEuXml(rows, lang, mode, picks, true);
+        } else {
+          const picks = (selectedME && selectedME[lang] && Object.keys(selectedME[lang]).length)
+            ? selectedME[lang]
+            : ME_MARKETS?.[lang];
+          xml = generateMeXml(rows, lang, mode, picks, true);
+        }
+
+        if(!xml) throw new Error('No XML could be generated.');
+
+        modalContentCode.textContent = xml;
+        modal.classList.remove('hidden');
+        Prism.highlightAll();
+
+      }catch(e){
+        showStatus(e.message, 'error');
+      }finally{
+        toggleLoading(false);
+      }
+    }
+  </script>
 </body>
 </html>
